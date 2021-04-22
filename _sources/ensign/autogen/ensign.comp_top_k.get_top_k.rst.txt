@@ -1,0 +1,6 @@
+ensign.comp\_top\_k.get\_top\_k
+===============================
+
+.. currentmodule:: ensign.comp_top_k
+
+.. autofunction:: get_top_k

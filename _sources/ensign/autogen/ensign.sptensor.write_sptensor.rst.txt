@@ -1,0 +1,6 @@
+ensign.sptensor.write\_sptensor
+===============================
+
+.. currentmodule:: ensign.sptensor
+
+.. autofunction:: write_sptensor

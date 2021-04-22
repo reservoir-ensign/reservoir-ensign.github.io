@@ -1,0 +1,455 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.decomp_diff &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ensign.decomp_diff</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># ENSIGN rights</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.spatial.distance</span> <span class="k">as</span> <span class="nn">ssd</span>
+<span class="kn">import</span> <span class="nn">ensign.distance</span> <span class="k">as</span> <span class="nn">ed</span>
+<span class="kn">from</span> <span class="nn">ensign.constants</span> <span class="k">import</span> <span class="n">DTYPE</span>
+<span class="kn">from</span> <span class="nn">ensign</span> <span class="k">import</span> <span class="n">cp_decomp</span> <span class="k">as</span> <span class="n">cpd</span>
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.ensign_logging</span> <span class="k">as</span> <span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+<span class="n">DEFAULT_THRESHOLD</span> <span class="o">=</span> <span class="mf">0.6</span>
+<span class="n">IGNORE_WEIGHTS</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">SUPPORTED_SCIPY_METRICS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;braycurtis&#39;</span><span class="p">,</span> <span class="s1">&#39;canberra&#39;</span><span class="p">,</span> <span class="s1">&#39;chebyshev&#39;</span><span class="p">,</span> <span class="s1">&#39;cityblock&#39;</span><span class="p">,</span> <span class="s1">&#39;correlation&#39;</span><span class="p">,</span> <span class="s1">&#39;cosine&#39;</span><span class="p">,</span>
+                           <span class="s1">&#39;dice&#39;</span><span class="p">,</span> <span class="s1">&#39;euclidean&#39;</span><span class="p">,</span> <span class="s1">&#39;hamming&#39;</span><span class="p">,</span> <span class="s1">&#39;jaccard&#39;</span><span class="p">,</span> <span class="s1">&#39;jensenshannon&#39;</span><span class="p">,</span> <span class="s1">&#39;kulsinski&#39;</span><span class="p">,</span>
+                           <span class="s1">&#39;matching&#39;</span><span class="p">,</span> <span class="s1">&#39;minkowski&#39;</span><span class="p">,</span> <span class="s1">&#39;rogerstanimoto&#39;</span><span class="p">,</span> <span class="s1">&#39;russellrao&#39;</span><span class="p">,</span> <span class="s1">&#39;sokalmichener&#39;</span><span class="p">,</span>
+                           <span class="s1">&#39;sokalsneath&#39;</span><span class="p">,</span> <span class="s1">&#39;sqeuclidean&#39;</span><span class="p">,</span> <span class="s1">&#39;yule&#39;</span><span class="p">]</span>
+
+<span class="n">DEFAULT_METRIC</span> <span class="o">=</span> <span class="s2">&quot;cosine&quot;</span>
+<span class="n">SUPPORTED_ANALYSIS_TYPES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;similarity&#39;</span><span class="p">,</span> <span class="s1">&#39;mapping&#39;</span><span class="p">,</span> <span class="s1">&#39;number&#39;</span><span class="p">]</span>
+<span class="n">DEFAULT_ANALYSIS_TYPE</span> <span class="o">=</span> <span class="s2">&quot;similarity&quot;</span>
+
+<span class="c1"># Error strings (used in exceptions and logging)</span>
+<span class="n">ERROR_DEFAULT</span> <span class="o">=</span> <span class="s1">&#39;An error occurred with decomp_diff&#39;</span>
+<span class="n">ERROR_INCOMPARABLE</span> <span class="o">=</span> <span class="s1">&#39;Decompositions are not comparable: </span><span class="si">{error}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_PARAM</span> <span class="o">=</span> <span class="s1">&#39;Invalid parameter value: </span><span class="si">{param}</span><span class="s1">=</span><span class="si">{value}</span><span class="s1">, </span><span class="si">{error}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_CSR</span> <span class="o">=</span> <span class="s1">&#39;Invalid syntax for comma-separated range value: </span><span class="si">{csr}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_DECOMP_READ</span> <span class="o">=</span> <span class="s1">&#39;Unable to read decomposition data from </span><span class="si">{path}</span><span class="s1">: </span><span class="si">{error}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_INVALID_ANALYSIS_TYPE</span> <span class="o">=</span> <span class="s1">&#39;Invalid analysis type: </span><span class="si">{type}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_UNSUPPORTED_METRIC</span> <span class="o">=</span> <span class="s1">&#39;Unsupported metric: </span><span class="si">{metric}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_INVALID_THRESHOLD</span> <span class="o">=</span> <span class="s1">&#39;Invalid value for threshold: </span><span class="si">{value}</span><span class="s1">. Threshold must be a non-negative float value.&#39;</span>
+<span class="n">ERROR_INSUFFICIENT_DECOMPS</span> <span class="o">=</span> <span class="s1">&#39;Two decompositions are required for comparison&#39;</span>
+<span class="n">ERROR_INSUFFICIENT_COMPONENTS</span> <span class="o">=</span> <span class="s1">&#39;Number of component specifiers does not match number of decompositions&#39;</span>
+<span class="n">ERROR_MODE_COUNT</span> <span class="o">=</span> <span class="s1">&#39;Incompatible number of modes (</span><span class="si">{actual}</span><span class="s1">) for decomposition in </span><span class="si">{id}</span><span class="s1">; should be </span><span class="si">{expected}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_MODE_SIZE</span> <span class="o">=</span> <span class="s1">&#39;Incompatible size(</span><span class="si">{actual}</span><span class="s1">) for mode </span><span class="si">{mode}</span><span class="s1"> in </span><span class="si">{id}</span><span class="s1">; should be </span><span class="si">{expected}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_MODE_SHAPE</span> <span class="o">=</span> <span class="s1">&#39;Incompatible shape (</span><span class="si">{actual}</span><span class="s1">) for mode </span><span class="si">{mode}</span><span class="s1"> in </span><span class="si">{id}</span><span class="s1">; should be </span><span class="si">{expected}</span><span class="s1">&#39;</span>
+<span class="n">ERROR_MODE_OUT_OF_BOUNDS</span> <span class="o">=</span> <span class="s1">&#39;Mode </span><span class="si">{mode}</span><span class="s1"> ID is greater than or equal to tensor rank </span><span class="si">{order}</span><span class="s1"> in tensor ID </span><span class="si">{id}</span><span class="s1"> (from files </span><span class="si">{filenames}</span><span class="s1">)&#39;</span>
+<span class="n">ERROR_COMPONENT_OUT_OF_BOUNDS</span> <span class="o">=</span> <span class="s1">&#39;Component ID </span><span class="si">{selection}</span><span class="s1"> is invalid for tensor ID </span><span class="si">{id}</span><span class="s1"> with tensor rank </span><span class="si">{rank}</span><span class="s1"> (from files </span><span class="si">{filenames}</span><span class="s1">). Skipping.&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">DiffCPDecomp</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An organizational helper class that associates a CPDecomp with its ID, the subset</span>
+<span class="sd">    of components and modes used to compare it to another, and the n-th root of the decomp weights.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decomp</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">decomp_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diff_modes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diff_components</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nth_root_weights</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># TODO: Consider expanding this custom exception hierarchy to make it usable across all ensign tools.</span>
+
+
+<span class="k">class</span> <span class="nc">DecompDiffError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The base exception for the Decomposition Diff module. Sub-classes should redefine &#39;message&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">ERROR_DEFAULT</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+
+
+<span class="k">class</span> <span class="nc">DecompDiffIncomparableError</span><span class="p">(</span><span class="n">DecompDiffError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Exception raised when decompositions are not comparable.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">ERROR_INCOMPARABLE</span>
+
+
+<span class="k">class</span> <span class="nc">DecompDiffParameterError</span><span class="p">(</span><span class="n">DecompDiffError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Exception raised when an invalid parameter value is provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">ERROR_PARAM</span>
+
+
+<span class="k">class</span> <span class="nc">DecompDiffCsrSyntaxError</span><span class="p">(</span><span class="n">DecompDiffParameterError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Exception raised when a syntactically invalid comma-separated range value is detected</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">ERROR_CSR</span>
+
+
+<span class="k">class</span> <span class="nc">DecompDiffReadError</span><span class="p">(</span><span class="n">DecompDiffError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Exception raised when reading a decomposition.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">message</span> <span class="o">=</span> <span class="n">ERROR_DECOMP_READ</span>
+
+<span class="k">def</span> <span class="nf">_validate_analyses</span><span class="p">(</span><span class="n">analyses</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">analyses</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No analysis types given&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;analyses&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">analyses</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="s1">&#39;No analysis types given&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">analysis</span> <span class="ow">in</span> <span class="n">analyses</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">analysis</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SUPPORTED_ANALYSIS_TYPES</span><span class="p">:</span>
+            <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_INVALID_ANALYSIS_TYPE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">analysis</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;analyses&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">analyses</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_validate_metric</span><span class="p">(</span><span class="n">metric</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">metric</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SUPPORTED_SCIPY_METRICS</span> <span class="o">+</span> <span class="n">ed</span><span class="o">.</span><span class="n">SUPPORTED_ENSIGN_METRICS</span><span class="p">:</span>
+        <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_UNSUPPORTED_METRIC</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">metric</span><span class="o">=</span><span class="n">metric</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;metric&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">metric</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_validate_threshold</span><span class="p">(</span><span class="n">threshold</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">thresh_float_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">thresh_float_val</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+            <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_INVALID_THRESHOLD</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;threshold&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">threshold</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_INVALID_THRESHOLD</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">threshold</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;threshold&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">threshold</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_validate_mode_selection</span><span class="p">(</span><span class="n">mode_selection</span><span class="p">,</span> <span class="n">ddc</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mode_selection</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">mode_selection</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">mode_selection</span> <span class="o">=</span> <span class="p">[</span><span class="n">mode_selection</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="n">mode_selection</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">mode_id</span> <span class="o">&gt;=</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">order</span> <span class="ow">or</span> <span class="n">mode_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_MODE_OUT_OF_BOUNDS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="n">mode_id</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">order</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp_id</span><span class="p">,</span> <span class="n">filenames</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">filenames</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;modes&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">mode_selection</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+    <span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span> <span class="o">=</span> <span class="n">mode_selection</span>
+
+<span class="k">def</span> <span class="nf">_validate_component_selection</span><span class="p">(</span><span class="n">component_selection</span><span class="p">,</span> <span class="n">ddc</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">component_selection</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">component_selection</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">component_selection</span> <span class="o">=</span> <span class="p">[</span><span class="n">component_selection</span><span class="p">]</span>
+    <span class="n">valid_components</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">component_id</span> <span class="ow">in</span> <span class="n">component_selection</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">component_id</span> <span class="o">&gt;=</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">rank</span> <span class="ow">or</span> <span class="n">component_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_COMPONENT_OUT_OF_BOUNDS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="n">component_id</span><span class="p">,</span> <span class="n">rank</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">rank</span><span class="p">,</span>
+                                                          <span class="nb">id</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp_id</span><span class="p">,</span> <span class="n">filenames</span> <span class="o">=</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">filenames</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">valid_components</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">component_id</span><span class="p">)</span>
+    <span class="n">ddc</span><span class="o">.</span><span class="n">diff_components</span> <span class="o">=</span> <span class="n">valid_components</span>
+
+<span class="k">def</span> <span class="nf">_assert_comparability</span><span class="p">(</span><span class="n">decomps</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">decomps</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_INSUFFICIENT_DECOMPS</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DecompDiffIncomparableError</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+    <span class="n">decomp_0_mode_sizes</span> <span class="o">=</span> <span class="n">decomps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">mode_sizes</span>
+    <span class="n">decomp_0_factors</span> <span class="o">=</span> <span class="n">decomps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span>
+    <span class="n">decomp_0_diff_modes</span> <span class="o">=</span> <span class="n">decomps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">diff_modes</span>
+    <span class="k">for</span> <span class="n">ddc</span> <span class="ow">in</span> <span class="n">decomps</span><span class="p">[</span><span class="mi">1</span><span class="p">:]:</span>
+        <span class="c1"># The number of modes used in the comparison must be same for all decompositions</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">decomp_0_diff_modes</span><span class="p">)</span>
+        <span class="n">actual</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">expected</span> <span class="o">!=</span> <span class="n">actual</span><span class="p">:</span>
+            <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_MODE_COUNT</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual</span><span class="o">=</span><span class="n">actual</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp_id</span><span class="p">,</span> <span class="n">expected</span><span class="o">=</span><span class="n">expected</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">DecompDiffIncomparableError</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">decomps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">)):</span>
+            <span class="c1"># The mode size of each mode must be the same for all decompositions</span>
+            <span class="n">expected</span> <span class="o">=</span> <span class="n">decomp_0_mode_sizes</span><span class="p">[</span><span class="n">decomp_0_diff_modes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span>
+            <span class="n">actual</span> <span class="o">=</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">mode_sizes</span><span class="p">[</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span>
+            <span class="k">if</span> <span class="n">expected</span> <span class="o">!=</span> <span class="n">actual</span><span class="p">:</span>
+                <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_MODE_SIZE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual</span><span class="o">=</span><span class="n">actual</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">],</span> <span class="nb">id</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp_id</span><span class="p">,</span>
+                                                <span class="n">expected</span><span class="o">=</span><span class="n">expected</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">DecompDiffIncomparableError</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+            <span class="c1"># The shape of each factor matrix must be the same for all decompositions, only in the number of values.</span>
+            <span class="n">expected</span> <span class="o">=</span> <span class="n">decomp_0_factors</span><span class="p">[</span><span class="n">decomp_0_diff_modes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">actual</span> <span class="o">=</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">expected</span> <span class="o">!=</span> <span class="n">actual</span><span class="p">:</span>
+                <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_MODE_SHAPE</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual</span><span class="o">=</span><span class="n">actual</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">],</span>
+                                                 <span class="nb">id</span><span class="o">=</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp_id</span><span class="p">,</span> <span class="n">expected</span><span class="o">=</span><span class="n">expected</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">DecompDiffIncomparableError</span><span class="p">(</span><span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_compute_similarity_matrix</span><span class="p">(</span><span class="n">decomps</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">ignore_weights</span><span class="p">):</span>
+    <span class="n">component_subsets</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_components</span><span class="p">)</span> <span class="k">for</span> <span class="n">ddc</span> <span class="ow">in</span> <span class="n">decomps</span><span class="p">]</span>
+    <span class="n">sm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">component_subsets</span><span class="p">)</span>
+
+    <span class="n">metric_fn</span> <span class="o">=</span> <span class="n">ssd</span><span class="o">.</span><span class="n">cosine</span>
+    <span class="k">if</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">SUPPORTED_SCIPY_METRICS</span><span class="p">:</span>
+        <span class="n">metric_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ssd</span><span class="p">,</span> <span class="n">metric</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">ed</span><span class="o">.</span><span class="n">SUPPORTED_ENSIGN_METRICS</span><span class="p">:</span>
+        <span class="n">metric_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ed</span><span class="p">,</span> <span class="n">metric</span><span class="p">)</span>
+
+    <span class="c1"># Future Work: Generalize this to compare the components of N decompositions</span>
+    <span class="n">d0</span> <span class="o">=</span> <span class="n">decomps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">d1</span> <span class="o">=</span> <span class="n">decomps</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">comp_0</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">d0</span><span class="o">.</span><span class="n">diff_components</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">comp_1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">d1</span><span class="o">.</span><span class="n">diff_components</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">comp_vector_0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">d0</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">comp_0</span><span class="p">]</span> <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="n">d0</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">])</span>
+            <span class="n">comp_vector_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">d1</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">comp_1</span><span class="p">]</span> <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="n">d1</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">])</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_weights</span><span class="p">:</span>
+                <span class="n">comp_vector_0</span> <span class="o">=</span> <span class="n">comp_vector_0</span> <span class="o">*</span> <span class="n">d0</span><span class="o">.</span><span class="n">nth_root_weights</span><span class="p">[</span><span class="n">comp_0</span><span class="p">]</span>
+                <span class="n">comp_vector_1</span> <span class="o">=</span> <span class="n">comp_vector_1</span> <span class="o">*</span> <span class="n">d1</span><span class="o">.</span><span class="n">nth_root_weights</span><span class="p">[</span><span class="n">comp_1</span><span class="p">]</span>
+            <span class="n">sm</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">metric_fn</span><span class="p">(</span><span class="n">comp_vector_0</span><span class="p">,</span> <span class="n">comp_vector_1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sm</span>
+
+
+<span class="k">def</span> <span class="nf">_compute_similarity_mappings</span><span class="p">(</span><span class="n">similarity_matrix</span><span class="p">,</span> <span class="n">threshold</span><span class="p">):</span>
+    <span class="c1"># Find components from decomp_1 (cols) that are &#39;similar&#39; to components in decomp_0 (rows) and save</span>
+    <span class="c1"># their indexes and distance. Also, find unique components in decomp_1 - those that have no &#39;similar&#39;</span>
+    <span class="c1"># components in decomp_0.</span>
+    <span class="n">similar_component_mappings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">unique_components</span> <span class="o">=</span> <span class="p">[</span><span class="kc">True</span><span class="p">]</span> <span class="o">*</span> <span class="n">similarity_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">similarity_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">similar_comp_found</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">similarity_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">similarity_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">threshold</span><span class="p">:</span>
+                <span class="n">similar_comp_found</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">similar_component_mappings</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">similarity_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]])</span>
+                <span class="n">unique_components</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">similar_comp_found</span><span class="p">:</span>
+            <span class="n">similar_component_mappings</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">i</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># Add in the unique components from decomp 1.</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">is_unique</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique_components</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_unique</span><span class="p">:</span>
+            <span class="n">similar_component_mappings</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">similar_component_mappings</span>
+
+
+<span class="k">def</span> <span class="nf">_compute_similarity_number</span><span class="p">(</span><span class="n">decomps</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="s1">&#39;cosine&#39;</span><span class="p">,</span> <span class="n">ignore_weights</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="c1"># The maximum number of components to be used for any decomposition is the minimum number of</span>
+    <span class="c1"># components specified, for all decompositions.</span>
+    <span class="n">max_comps_per_decomp</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_components</span><span class="p">)</span> <span class="k">for</span> <span class="n">ddc</span> <span class="ow">in</span> <span class="n">decomps</span><span class="p">)</span>
+
+    <span class="c1"># Create a single vector for each decomposition that consists of all the specified modes and components</span>
+    <span class="n">decomp_vectors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">ddc</span> <span class="ow">in</span> <span class="n">decomps</span><span class="p">:</span>
+        <span class="c1"># Restrict the components for this decomposition to the maximum allowed. In this way, we get the</span>
+        <span class="c1"># same sized vector used in comparisons between decompositions.</span>
+        <span class="n">components_for_decomp</span> <span class="o">=</span> <span class="n">ddc</span><span class="o">.</span><span class="n">diff_components</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="n">max_comps_per_decomp</span><span class="p">]</span>
+
+        <span class="c1"># Construct the subset of factors for this decomp based on the subset of modes and the subset of components.</span>
+        <span class="c1"># Similar to decomp.factors, this is a list of np.array objects. The difference being there are only factor</span>
+        <span class="c1"># matrices for the modes specified, and the rank is reduced to only those components that are specified.</span>
+        <span class="n">factors_subset</span> <span class="o">=</span> <span class="p">[</span><span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">components_for_decomp</span><span class="p">]</span> <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_weights</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">factor_sub_matrix</span> <span class="ow">in</span> <span class="n">factors_subset</span><span class="p">:</span>
+                <span class="n">nth_root_weights</span> <span class="o">=</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">components_for_decomp</span><span class="p">]</span>
+                <span class="n">factor_sub_matrix</span><span class="o">.</span><span class="fm">__imul__</span><span class="p">(</span><span class="n">nth_root_weights</span><span class="p">)</span>
+        <span class="n">decomp_vectors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">factors_subset</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+
+    <span class="c1"># Compute metric between every pair of vectors.</span>
+    <span class="n">metric_fn</span> <span class="o">=</span> <span class="n">metric</span>
+    <span class="k">if</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">SUPPORTED_SCIPY_METRICS</span><span class="p">:</span>
+        <span class="n">metric_fn</span> <span class="o">=</span> <span class="n">metric</span>
+    <span class="k">elif</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">ed</span><span class="o">.</span><span class="n">SUPPORTED_ENSIGN_METRICS</span><span class="p">:</span>
+        <span class="n">metric_fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ed</span><span class="p">,</span> <span class="n">metric</span><span class="p">)</span>
+    <span class="n">distances</span> <span class="o">=</span> <span class="n">ssd</span><span class="o">.</span><span class="n">pdist</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">decomp_vectors</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">DTYPE</span><span class="p">),</span> <span class="n">metric</span><span class="o">=</span><span class="n">metric_fn</span><span class="p">)</span>
+
+    <span class="c1"># Future Work: We&#39;re currently assuming only two decompositions are being compared by this tool. This fn can handle</span>
+    <span class="c1"># an arbitrary number, in which case it could return the condensed distance matrix from pdist().</span>
+    <span class="k">return</span> <span class="n">distances</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="decomp_diff"><a class="viewcode-back" href="../../ensign/autogen/ensign.decomp_diff.decomp_diff.html#ensign.decomp_diff.decomp_diff">[docs]</a><span class="k">def</span> <span class="nf">decomp_diff</span><span class="p">(</span><span class="n">decomps</span><span class="p">,</span> <span class="n">analyses</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">components</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">DEFAULT_THRESHOLD</span><span class="p">,</span>
+                <span class="n">ignore_weights</span><span class="o">=</span><span class="n">IGNORE_WEIGHTS</span><span class="p">,</span> <span class="n">metric</span><span class="o">=</span><span class="n">DEFAULT_METRIC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determine differences(similarities) between decompositions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    decomps : [ensign.CPDecomp]</span>
+<span class="sd">        A list of CPDecomp objects, one for each decomposition to be compared.</span>
+<span class="sd">    analyses : [string]</span>
+<span class="sd">        A list of analysis types. One or more of: &#39;number&#39;, &#39;mapping&#39;, &#39;similarity&#39;</span>
+<span class="sd">    modes : [int]</span>
+<span class="sd">        A list of mode identifiers to be used in the comparison. Default: all modes are compared.</span>
+<span class="sd">    components : [[int]]</span>
+<span class="sd">        One per decomposition, a list of component identifiers to be used in comparison. </span>
+<span class="sd">        Default: all components are compared for every decomposition.</span>
+<span class="sd">    threshold : float</span>
+<span class="sd">        The threshold value that determines similarity when determining similar components</span>
+<span class="sd">    ignore_weights : bool</span>
+<span class="sd">        Either ignore (True) or use (False) decomposition weights when comparing decompositions. Default: False</span>
+<span class="sd">    metric : string</span>
+<span class="sd">        The name of metric to be used in comparisons. Can be either a metric from scipy.spatial.distance, or a custom</span>
+<span class="sd">        metric defined in ensign.distance.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : dict</span>
+<span class="sd">        The key to the dictionary is the analysis type, the value is the result of that analysis.</span>
+<span class="sd">            &#39;number&#39; : float - The result of comparing each decomposition</span>
+<span class="sd">            &#39;mapping&#39; : dict - For each component in decomp[0] show the most similar component(s) in &quot;</span>
+<span class="sd">                              &quot;decomp[1] within the given threshold. A unique component in decomp[0] will &quot;</span>
+<span class="sd">                              &quot;map to an empty list. Also, map components from decomp[1] with no similar &quot;</span>
+<span class="sd">                              &quot;component in decomp[0], within the threshold.</span>
+<span class="sd">            &#39;similarity&#39; : numpy.ndarray - The similarity matrix showing comparision between all specified</span>
+<span class="sd">                                           components of decomp[0] and all specified components of decomp[1]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Starting decomp_diff&#39;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;  decomps: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">decomps</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;  analyses: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">analyses</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;  modes: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">modes</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;  components: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">components</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;  threshold: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">threshold</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;  ignore_weights: &#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">ignore_weights</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;  metric: &#39;</span> <span class="o">+</span> <span class="n">metric</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Validating parameters&#39;</span><span class="p">)</span>
+    <span class="c1"># The default list of analyses to perform. This is a mutable default argument.</span>
+    <span class="c1"># See https://docs.python-guide.org/writing/gotchas/</span>
+    <span class="k">if</span> <span class="n">analyses</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Using Default Analysis type: </span><span class="si">{type}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">DEFAULT_ANALYSIS_TYPE</span><span class="p">))</span>
+        <span class="n">analyses</span> <span class="o">=</span> <span class="p">[</span><span class="n">DEFAULT_ANALYSIS_TYPE</span><span class="p">]</span>
+
+    <span class="c1"># Future work: Expand ability of this tool to compare more than two decompositions</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">decomps</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">decomps</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_INSUFFICIENT_DECOMPS</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;decomps&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">decomps</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+    <span class="c1"># A default value of None for components means that all components of each decomposition will be compared.</span>
+    <span class="k">if</span> <span class="n">components</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Using all components in each decomposition&quot;</span><span class="p">)</span>
+        <span class="n">components</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">decomp</span><span class="o">.</span><span class="n">rank</span><span class="p">))</span> <span class="k">for</span> <span class="n">decomp</span> <span class="ow">in</span> <span class="n">decomps</span><span class="p">]</span>
+
+    <span class="c1"># A default value of None for modes means that all modes of each decomposition will be compared.</span>
+    <span class="k">if</span> <span class="n">modes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Using all modes in each decomposition&quot;</span><span class="p">)</span>
+        <span class="n">modes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">decomps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">order</span><span class="p">))</span>
+
+    <span class="c1"># If specified, the number of component strings must be the same as the number of decomps.</span>
+    <span class="k">if</span> <span class="n">components</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">decomps</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">components</span><span class="p">):</span>
+        <span class="n">errmsg</span> <span class="o">=</span> <span class="n">ERROR_INSUFFICIENT_COMPONENTS</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">errmsg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">DecompDiffParameterError</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="s1">&#39;components&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">components</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="n">errmsg</span><span class="p">)</span>
+
+    <span class="n">_validate_analyses</span><span class="p">(</span><span class="n">analyses</span><span class="p">)</span>
+    <span class="n">_validate_metric</span><span class="p">(</span><span class="n">metric</span><span class="p">)</span>
+    <span class="n">_validate_threshold</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Reading decompositions, determining modes and components&#39;</span><span class="p">)</span>
+    <span class="n">diff_decomps</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">decomp_id</span><span class="p">,</span> <span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">decomp_component</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">decomps</span><span class="p">,</span> <span class="n">components</span><span class="p">)):</span>
+        <span class="n">ddc</span> <span class="o">=</span> <span class="n">DiffCPDecomp</span><span class="p">()</span>
+        <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span> <span class="o">=</span> <span class="n">decomp</span>
+        <span class="n">ddc</span><span class="o">.</span><span class="n">decomp_id</span> <span class="o">=</span> <span class="n">decomp_id</span>
+        <span class="n">_validate_mode_selection</span><span class="p">(</span><span class="n">modes</span><span class="p">,</span> <span class="n">ddc</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;    Selected modes: </span><span class="si">{modes}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">modes</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_modes</span><span class="p">)))</span>
+        <span class="n">_validate_component_selection</span><span class="p">(</span><span class="n">decomp_component</span><span class="p">,</span> <span class="n">ddc</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;    Selected components: </span><span class="si">{comps}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comps</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">ddc</span><span class="o">.</span><span class="n">diff_components</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_weights</span><span class="p">:</span>
+            <span class="n">ddc</span><span class="o">.</span><span class="n">nth_root_weights</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">rank</span><span class="p">)</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">ddc</span><span class="o">.</span><span class="n">decomp</span><span class="o">.</span><span class="n">weights</span><span class="p">]</span>
+        <span class="n">diff_decomps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ddc</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Determining comparability of decompositions&#39;</span><span class="p">)</span>
+    <span class="n">_assert_comparability</span><span class="p">(</span><span class="n">diff_decomps</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="s1">&#39;similarity&#39;</span> <span class="ow">in</span> <span class="n">analyses</span> <span class="ow">or</span> <span class="s1">&#39;mapping&#39;</span> <span class="ow">in</span> <span class="n">analyses</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;computing similarity matrix&#39;</span><span class="p">)</span>
+        <span class="n">similarity_matrix</span> <span class="o">=</span> <span class="n">_compute_similarity_matrix</span><span class="p">(</span><span class="n">diff_decomps</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">ignore_weights</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;similarity&#39;</span> <span class="ow">in</span> <span class="n">analyses</span><span class="p">:</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;similarity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">similarity_matrix</span>
+        <span class="k">if</span> <span class="s1">&#39;mapping&#39;</span> <span class="ow">in</span> <span class="n">analyses</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Computing similarity mappings&#39;</span><span class="p">)</span>
+            <span class="n">result</span><span class="p">[</span><span class="s1">&#39;mapping&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_compute_similarity_mappings</span><span class="p">(</span><span class="n">similarity_matrix</span><span class="p">,</span> <span class="n">threshold</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;number&#39;</span> <span class="ow">in</span> <span class="n">analyses</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Computing similarity between decompositions&#39;</span><span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="s1">&#39;number&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_compute_similarity_number</span><span class="p">(</span><span class="n">diff_decomps</span><span class="p">,</span> <span class="n">metric</span><span class="p">,</span> <span class="n">ignore_weights</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Finished decomp_diff&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

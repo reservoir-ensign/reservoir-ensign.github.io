@@ -1,0 +1,380 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.sptensor &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ensign.sptensor</h1><div class="highlight"><pre>
+<span></span><span class="c1"># ENSIGN rights</span>
+<span class="sd">&quot;&quot;&quot;Sparse tensor tools. </span>
+
+<span class="sd">This module contains functions for reading, writing, and representing sparse </span>
+<span class="sd">tensors.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">ensign.constants</span> <span class="k">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.ensign_logging</span> <span class="k">as</span> <span class="nn">ensign_logging</span>
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.sptensor_io</span> <span class="k">as</span> <span class="nn">sio</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">ensign_logging</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+<div class="viewcode-block" id="SPTensor"><a class="viewcode-back" href="../../ensign/autogen/ensign.sptensor.SPTensor.html#ensign.sptensor.SPTensor">[docs]</a><span class="k">class</span> <span class="nc">SPTensor</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Represents a sparse tensor.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    order : int</span>
+<span class="sd">        Order of sparse tensor.</span>
+<span class="sd">    nnz : int</span>
+<span class="sd">        Number of nonzero tensor entries.</span>
+<span class="sd">    mode_sizes : list of int</span>
+<span class="sd">        The number of indices in each mode accessed by ``mode_id``.</span>
+<span class="sd">    mode_names : list of str</span>
+<span class="sd">        The name of each mode indexed by ``mode_id``.</span>
+<span class="sd">    entries : Pandas dataframe</span>
+<span class="sd">        2D dataframe of tensor entries. This dataframe has ``order + 1`` columns </span>
+<span class="sd">        and ``nnz`` rows. The first ``order`` columns represent 64-bit ``int`` </span>
+<span class="sd">        tensor indices. The final column represents a ``float64`` nonzero tensor </span>
+<span class="sd">        entry corresponding to the tensor indices in its row.</span>
+<span class="sd">    labels : list of list of str, optional</span>
+<span class="sd">        An optional list of per-mode index labels accessed by ``mode_id``. Each</span>
+<span class="sd">        list of labels corresponds to the labels for each index of the mode.</span>
+<span class="sd">        Suppose we have a mode with ``mode_id = 3`` and ``&quot;Yes&quot;``, ``&quot;No&quot;``,</span>
+<span class="sd">        ``&quot;Maybe&quot;`` mapped to indices 0-2. For this mode, ``labels[3]`` is</span>
+<span class="sd">        equal to ``[&quot;Yes&quot;, &quot;No&quot;, &quot;Maybe&quot;]``. SPTensors are not required to</span>
+<span class="sd">        have labels.</span>
+<span class="sd">    spt_backtrack : list of lists of tuples</span>
+<span class="sd">        An optional list with as many elements as non-zero tensor entries. Each</span>
+<span class="sd">        element is a list containing tuples that indicate all file-line </span>
+<span class="sd">        pairs in the CSV file that contributed to that entry. For example, </span>
+<span class="sd">        given a tensor with three entries such that the first tracks to CSV 0,</span>
+<span class="sd">        line 15 and CSV 1, line 7, the second tracks to CSV 0, line 45, and the </span>
+<span class="sd">        third tracks to CSV 1, line 23, the list would be: </span>
+<span class="sd">        [[(0,15), (1,7)], [(0,45)], [(1,23)]]</span>
+<span class="sd">    queries : list of list of strings</span>
+<span class="sd">        An optional list with as many elements as number of modes. Each of these</span>
+<span class="sd">        lists has as many entries as non-zero tensor entries. Each entry is a</span>
+<span class="sd">        string describing selection criteria for the bin corresponding to the</span>
+<span class="sd">        given entry and mode. For example, in a tensor with float64, int64, and </span>
+<span class="sd">        ip modes binned by round=1, log10, and ipsubnet=255.0.0.0, respectively, </span>
+<span class="sd">        the list could be: [[&quot;c1 &gt;= 0.1 AND c1 &lt; 0.2&quot;, ...], [&quot;c2 &gt;=10 AND c2 &lt; 100&quot;, ...], </span>
+<span class="sd">        [&quot;c3 &amp; 255.0.0.0 == 10.0.0.0&quot;, ...]]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SPTensor.__init__"><a class="viewcode-back" href="../../ensign/autogen/ensign.sptensor.SPTensor.html#ensign.sptensor.SPTensor.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">nnz</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mode_sizes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">entries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+                  <span class="n">mode_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spt_backtrack</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">queries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">directory</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="n">order</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nnz</span> <span class="o">=</span> <span class="n">nnz</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode_sizes</span> <span class="o">=</span> <span class="n">mode_sizes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode_names</span> <span class="o">=</span> <span class="n">mode_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entries</span> <span class="o">=</span> <span class="n">entries</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="o">=</span> <span class="n">spt_backtrack</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries</span> <span class="o">=</span> <span class="n">queries</span>
+
+        <span class="k">if</span> <span class="n">directory</span><span class="p">:</span>
+            <span class="n">sptensor</span> <span class="o">=</span> <span class="n">read_sptensor</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">order</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nnz</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">nnz</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mode_sizes</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">mode_sizes</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mode_names</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">mode_names</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entries</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">entries</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">labels</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">spt_backtrack</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queries</span> <span class="o">=</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">queries</span></div>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">t</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="bp">self</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">t</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="o">=</span> <span class="p">[</span><span class="nb">sorted</span><span class="p">(</span><span class="n">bt</span><span class="p">)</span> <span class="k">for</span> <span class="n">bt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spt_backtrack</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="o">=</span> <span class="p">[</span><span class="nb">sorted</span><span class="p">(</span><span class="n">bt</span><span class="p">)</span> <span class="k">for</span> <span class="n">bt</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">spt_backtrack</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span> <span class="o">!=</span> <span class="n">t</span><span class="o">.</span><span class="n">order</span> <span class="ow">or</span>\
+           <span class="bp">self</span><span class="o">.</span><span class="n">nnz</span> <span class="o">!=</span> <span class="n">t</span><span class="o">.</span><span class="n">nnz</span> <span class="ow">or</span>\
+           <span class="bp">self</span><span class="o">.</span><span class="n">mode_sizes</span> <span class="o">!=</span> <span class="n">t</span><span class="o">.</span><span class="n">mode_sizes</span> <span class="ow">or</span>\
+           <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entries</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">entries</span><span class="p">)</span> <span class="ow">or</span>\
+           <span class="bp">self</span><span class="o">.</span><span class="n">mode_names</span> <span class="o">!=</span> <span class="n">t</span><span class="o">.</span><span class="n">mode_names</span> <span class="ow">or</span>\
+           <span class="bp">self</span><span class="o">.</span><span class="n">labels</span> <span class="o">!=</span> <span class="n">t</span><span class="o">.</span><span class="n">labels</span> <span class="ow">or</span>\
+           <span class="bp">self</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="o">!=</span> <span class="n">t</span><span class="o">.</span><span class="n">spt_backtrack</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;order&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">,</span> <span class="s1">&#39;nnz&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">nnz</span><span class="p">,</span> <span class="s1">&#39;mode_sizes&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode_sizes</span><span class="p">,</span> 
+               <span class="s1">&#39;mode_names&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode_names</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SPTensor.write"><a class="viewcode-back" href="../../ensign/autogen/ensign.sptensor.SPTensor.write.html#ensign.sptensor.SPTensor.write">[docs]</a>    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outdir</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Writes a text representation of the sparse tensor to the given </span>
+<span class="sd">            directory. If the directory does not exist, it will be created. </span>
+<span class="sd">            If the directory exists, it will be replaced.</span>
+
+<span class="sd">            Parameters</span>
+<span class="sd">            ----------</span>
+<span class="sd">            outdir : str</span>
+<span class="sd">                Absolute or relative path of the directory that will contain the </span>
+<span class="sd">                sparse tensor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">write_sptensor</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="write_sptensor"><a class="viewcode-back" href="../../ensign/autogen/ensign.sptensor.write_sptensor.html#ensign.sptensor.write_sptensor">[docs]</a><span class="k">def</span> <span class="nf">write_sptensor</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">sptensor</span><span class="p">,</span> <span class="n">tensor_filename</span><span class="o">=</span><span class="s1">&#39;tensor_data.txt&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Writes a sparse tensor to the filesystem.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    directory : str</span>
+<span class="sd">        Directory to write the tensor to. This directory will be created if nonexistent </span>
+<span class="sd">        and **will be overwritten** if it exists.</span>
+<span class="sd">    sptensor : SPTensor</span>
+<span class="sd">        The sparse tensor to be written.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    Exception</span>
+<span class="sd">        If the sparse tensor could not be written.</span>
+
+<span class="sd">    See also</span>
+<span class="sd">    --------</span>
+<span class="sd">    ensign.sptensor.SPTensor : Sparse tensor class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">mode_id</span><span class="p">,</span> <span class="n">mode_name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sptensor</span><span class="o">.</span><span class="n">mode_names</span><span class="p">):</span>
+        <span class="n">sio</span><span class="o">.</span><span class="n">write_labels</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">mode_id</span><span class="p">,</span> <span class="n">mode_name</span><span class="p">,</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">labels</span><span class="p">[</span><span class="n">mode_id</span><span class="p">])</span>
+    <span class="n">sio</span><span class="o">.</span><span class="n">write_sptensor_entries</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">mode_sizes</span><span class="p">,</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">entries</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">tensor_filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">spt_backtrack</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sio</span><span class="o">.</span><span class="n">write_sptensor_backtrack</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">spt_backtrack</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> 
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/spt_backtrack.txt&#39;</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">directory</span> <span class="o">+</span> <span class="s1">&#39;/spt_backtrack.txt&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">queries</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">mode_id</span><span class="p">,</span> <span class="n">mode_name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sptensor</span><span class="o">.</span><span class="n">mode_names</span><span class="p">):</span>
+            <span class="n">sio</span><span class="o">.</span><span class="n">write_labels</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">mode_id</span><span class="p">,</span> <span class="n">mode_name</span><span class="p">,</span> <span class="n">sptensor</span><span class="o">.</span><span class="n">queries</span><span class="p">[</span><span class="n">mode_id</span><span class="p">],</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;queries_mode_&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="read_sptensor"><a class="viewcode-back" href="../../ensign/autogen/ensign.sptensor.read_sptensor.html#ensign.sptensor.read_sptensor">[docs]</a><span class="k">def</span> <span class="nf">read_sptensor</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">tensor_file</span><span class="o">=</span><span class="s1">&#39;tensor_data.txt&#39;</span><span class="p">,</span> <span class="n">read_map_modes</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reads a sparse tensor file from the filesystem.</span>
+
+<span class="sd">    Looks for mode maps formatted as map_mode_&lt;i&gt;.txt and reads</span>
+<span class="sd">    the metadata into ``sptensor`` if found.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    directory : str</span>
+<span class="sd">        Name of directory containing tensor data and mode maps.</span>
+<span class="sd">    tensor_file : str</span>
+<span class="sd">        Filename of sparse tensor file. Default: &#39;tensor_data.txt&#39;</span>
+<span class="sd">    read_map_modes : str</span>
+<span class="sd">        If True, read_sptensor will look for and read from existing mode </span>
+<span class="sd">        map files to determine mode names and labels.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sptensor : SPTensor</span>
+<span class="sd">        The sparse tensor in ``directory``</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    Exception</span>
+<span class="sd">        If the sparse tensor cannot be read or is not well formed.</span>
+
+<span class="sd">    See also</span>
+<span class="sd">    --------</span>
+<span class="sd">    ensign.sptensor.SPTensor : Sparse tensor class</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Error Checking</span>
+    <span class="k">if</span> <span class="n">directory</span> <span class="o">==</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;directory is not of type String.&quot;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Argument &#39;directory&#39; is not a valid directory.&quot;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">directory</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;/&#39;</span><span class="p">:</span>
+        <span class="n">directory</span> <span class="o">+=</span> <span class="s1">&#39;/&#39;</span>
+
+    <span class="c1"># Get data from tensor_data.txt</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">directory</span><span class="o">+</span><span class="n">tensor_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">order</span><span class="p">,</span> <span class="n">nnz</span><span class="p">,</span> <span class="n">mode_sizes</span><span class="p">,</span> <span class="n">entries</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">read_sptensor_entries</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="c1"># Get backtrack data</span>
+    <span class="n">spt_backtrack</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">read_sptensor_backtrack</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+
+    <span class="c1"># Get queries</span>
+    <span class="n">queries_fn_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;queries_mode_[0-9]+.txt&#39;</span><span class="p">)</span>
+    <span class="n">queries_fns</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">queries_fn_pattern</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> 
+                                <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">queries_fns</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">queries</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">read_many_labels</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">queries_fns</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">queries</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Get labels</span>
+    <span class="n">label_fns</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mode_map_fn_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;map_mode_[0-9]+.txt&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">read_map_modes</span><span class="p">:</span>
+        <span class="n">label_fns</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">mode_map_fn_pattern</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> 
+                                  <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">label_fns</span><span class="p">:</span>
+        <span class="n">mode_names</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">read_many_labels</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">label_fns</span><span class="p">)</span>
+        <span class="n">df_entries</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">entries</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">mode_names</span><span class="o">+</span><span class="p">[</span><span class="s1">&#39;val_idx&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">order</span><span class="p">):</span>
+            <span class="n">df_entries</span><span class="p">[</span><span class="n">mode_names</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span> <span class="o">=</span> <span class="n">df_entries</span><span class="p">[</span><span class="n">mode_names</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SPTensor</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">nnz</span><span class="p">,</span> <span class="n">mode_sizes</span><span class="p">,</span> <span class="n">df_entries</span><span class="p">,</span> <span class="n">mode_names</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">spt_backtrack</span><span class="p">,</span> <span class="n">queries</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mode_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="s1">&#39;mode_&#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mode_sizes</span><span class="p">)))))</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[[</span><span class="s1">&#39;label_</span><span class="si">{}</span><span class="s1">-</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> 
+                    <span class="nb">range</span><span class="p">(</span><span class="n">mode_size</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">mode_size</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">mode_sizes</span><span class="p">)]</span>
+        <span class="n">df_entries</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">entries</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">mode_names</span><span class="o">+</span><span class="p">[</span><span class="s1">&#39;val_idx&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">order</span><span class="p">):</span>
+            <span class="n">df_entries</span><span class="p">[</span><span class="n">mode_names</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span> <span class="o">=</span> <span class="n">df_entries</span><span class="p">[</span><span class="n">mode_names</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SPTensor</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">nnz</span><span class="p">,</span> <span class="n">mode_sizes</span><span class="p">,</span> <span class="n">df_entries</span><span class="p">,</span> <span class="n">mode_names</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">spt_backtrack</span><span class="p">,</span> <span class="n">queries</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">read_sptensor_file</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reads a sparse tensor file from the filesystem.</span>
+
+<span class="sd">    Looks for mode maps formatted as map_mode_&lt;i&gt;.txt and reads</span>
+<span class="sd">    the metadata into ``sptensor`` if found.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Path to a directory containing sptensor files or to a </span>
+<span class="sd">        tensor_data.txt file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sptensor : SPTensor</span>
+<span class="sd">        The sparse tensor in ``filename``</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    Exception</span>
+<span class="sd">        If the sparse tensor cannot be read or is not well formed.</span>
+
+<span class="sd">    See also</span>
+<span class="sd">    --------</span>
+<span class="sd">    ensign.sptensor.SPTensor : Sparse tensor class</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">read_sptensor</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">read_sptensor</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> is not a valid sptensor file or directory.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">write_sptensor_file</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">sptensor</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Writes a sparse tensor to the filesystem.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Directory/filename to write the tensor to. If a filename,</span>
+<span class="sd">        the directory will be inferred. This directory will be created if nonexistent </span>
+<span class="sd">        and **will be overwritten** if it exists.</span>
+<span class="sd">    sptensor : SPTensor</span>
+<span class="sd">        The sparse tensor to be written.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    Exception</span>
+<span class="sd">        If the sparse tensor could not be written.</span>
+
+<span class="sd">    See also</span>
+<span class="sd">    --------</span>
+<span class="sd">    ensign.sptensor.SPTensor : Sparse tensor class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">write_sptensor</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">sptensor</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">write_sptensor</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">sptensor</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

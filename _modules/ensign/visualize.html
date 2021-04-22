@@ -1,0 +1,367 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.visualize &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ensign.visualize</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># ENSIGN rights</span>
+<span class="sd">&quot;&quot;&quot; Visualize a tensor decomposition by plotting scores for selected components </span>
+<span class="sd">in each mode.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># visualize.py comp</span>
+<span class="c1">#</span>
+<span class="c1"># Requires results to be inside VISUALS_INPUT_DIR and in</span>
+<span class="c1">#  the format: decomp_mode_i.txt where &quot;i&quot; is the mode.</span>
+<span class="c1">#</span>
+<span class="c1"># If comp isn&#39;t specified then all components will be visualized.</span>
+
+<span class="kn">import</span> <span class="nn">multiprocessing</span> <span class="k">as</span> <span class="nn">mltprc</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Agg&#39;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib.ticker</span> <span class="k">as</span> <span class="nn">ticker</span>
+<span class="kn">from</span> <span class="nn">matplotlib.collections</span> <span class="k">import</span> <span class="n">LineCollection</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">ensign.cp_decomp</span> <span class="k">as</span> <span class="nn">cpd</span>
+<span class="kn">import</span> <span class="nn">ensign.comp_top_k</span> <span class="k">as</span> <span class="nn">ctk</span>
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.ensign_logging</span> <span class="k">as</span> <span class="nn">ensign_logging</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">ensign_logging</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+<span class="c1"># log.setLevel(&#39;DEBUG&#39;) # Developers uncomment this for stacktraces</span>
+
+<span class="n">DISCRETE_COUNT</span> <span class="o">=</span> <span class="mi">1000</span>
+<span class="n">AXIS_SCALE_OVERHEAD</span> <span class="o">=</span> <span class="mf">1.1</span>
+<span class="n">X_AXIS_OVERHEAD</span> <span class="o">=</span> <span class="mf">0.01</span>
+<span class="n">MAX_MODE_PER_FRAME</span> <span class="o">=</span> <span class="mi">8</span>
+<span class="n">TOLERANCE_VALUE</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">DPI</span> <span class="o">=</span> <span class="mi">150</span>
+
+<span class="k">def</span> <span class="nf">_parse_args</span><span class="p">():</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">4</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">7</span><span class="p">:</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;ERROR: visualize.py &lt;comp&gt; &lt;input_directory&gt; &lt;num weight vectors&gt; &quot;</span>
+               <span class="s2">&quot; [&lt;decomposition_type&gt; &lt;num_components&gt; &lt;use_absolute_value&gt;]&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">FAILURE</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">args</span><span class="p">[</span><span class="s1">&#39;decomp_dir&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">args</span><span class="p">[</span><span class="s1">&#39;num_components&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">7</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;CP&quot;</span><span class="p">:</span>
+            <span class="n">args</span><span class="p">[</span><span class="s1">&#39;decomp_type&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;ERROR: Invalid decomposition type: &quot;</span> <span class="o">+</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">FAILURE</span>
+        <span class="n">args</span><span class="p">[</span><span class="s1">&#39;num_components&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">5</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">args</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">_parse_args</span><span class="p">()</span>
+
+    <span class="n">decomp</span> <span class="o">=</span> <span class="n">cpd</span><span class="o">.</span><span class="n">read_cp_decomp_dir</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="s1">&#39;decomp_dir&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="p">[</span><span class="s1">&#39;num_components&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">num_components</span> <span class="o">=</span> <span class="n">decomp</span><span class="o">.</span><span class="n">rank</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">num_components</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="s1">&#39;num_components&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">num_components</span> <span class="o">&gt;</span> <span class="n">decomp</span><span class="o">.</span><span class="n">rank</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING: More components requested than rank of the decomposition.&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Using </span><span class="si">{}</span><span class="s1"> instead.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">rank</span><span class="p">))</span>
+            <span class="n">num_components</span> <span class="o">=</span> <span class="n">decomp</span><span class="o">.</span><span class="n">rank</span>
+
+    <span class="n">visualize</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">num_components</span><span class="o">=</span><span class="n">num_components</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">visualize</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">num_components</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Visualize all the components of a decomposition and save to a file &#39;decomp.pdf&#39;.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    decomp : ensign.cp_decomp.CPDecomp</span>
+<span class="sd">        Decomposition to visualize.</span>
+<span class="sd">    top_k : bool</span>
+<span class="sd">        Whether or not to include the top 10 labels of each mode in the </span>
+<span class="sd">        visuals.</span>
+<span class="sd">    num_components : int</span>
+<span class="sd">        Number of components to visualize. If left as None, then the rank of</span>
+<span class="sd">        the decomposition is used.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">top_k</span><span class="p">:</span>
+        <span class="n">top_k</span> <span class="o">=</span> <span class="n">ctk</span><span class="o">.</span><span class="n">get_top_k</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">,</span> <span class="n">decomp</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">rank</span><span class="p">)),</span> <span class="mi">10</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">num_components</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">num_components</span> <span class="o">=</span> <span class="n">decomp</span><span class="o">.</span><span class="n">rank</span>
+
+    <span class="c1"># use the number of physical processors, rather than logical</span>
+    <span class="n">num_cores</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">((</span><span class="n">mltprc</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">))</span> <span class="k">if</span> <span class="p">(</span><span class="n">mltprc</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="p">)</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">comps_per_core</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">num_components</span> <span class="o">/</span> <span class="n">num_cores</span><span class="p">)</span>
+    <span class="n">comps_leftover</span> <span class="o">=</span> <span class="n">num_components</span> <span class="o">%</span> <span class="n">num_cores</span>
+
+    <span class="c1"># creates partitions of the components among the available CPUs</span>
+    <span class="c1"># if even partitions are not possible, the last CPU will visualize the &quot;extra&quot; components</span>
+    <span class="c1"># some cores may go unused if the number of cores exceeds the deomposition rank</span>
+    <span class="c1"># example: for 4 cores and 30 components, will give:</span>
+    <span class="c1"># [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15], </span>
+    <span class="c1"># [16, 17, 18, 19], [20, 21, 22, 23], [24, 25, 26, 27], [28,29]]   </span>
+
+    <span class="n">process_comp_map</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">num_components</span><span class="p">))[</span><span class="n">core</span><span class="o">*</span><span class="n">comps_per_core</span> 
+        <span class="o">+</span> <span class="nb">min</span><span class="p">(</span><span class="n">comps_leftover</span><span class="p">,</span> <span class="n">core</span><span class="p">):</span> <span class="p">(</span><span class="n">core</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">comps_per_core</span><span class="p">)</span>
+        <span class="o">+</span> <span class="nb">min</span><span class="p">(</span><span class="n">core</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">comps_leftover</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">core</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_cores</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">core</span> <span class="o">&lt;</span> <span class="n">num_components</span><span class="p">)]</span>
+
+    <span class="n">procs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">process_id</span><span class="p">,</span> <span class="n">comp_range</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">process_comp_map</span><span class="p">):</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">mltprc</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">draw_pdf</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">comp_range</span><span class="p">,</span> <span class="n">top_k</span><span class="p">))</span>
+        <span class="n">procs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  
+
+    <span class="n">exitcode_sum</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">procs</span><span class="p">:</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="n">exitcode_sum</span> <span class="o">+=</span> <span class="n">p</span><span class="o">.</span><span class="n">exitcode</span>
+
+    <span class="k">return</span> <span class="n">exitcode_sum</span>
+
+<span class="k">def</span> <span class="nf">draw_pdf</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">comp_range</span><span class="p">,</span> <span class="n">top_k</span><span class="p">):</span>
+    <span class="c1"># Helper function to parallelize computation.</span>
+    <span class="k">for</span> <span class="n">comp_id</span> <span class="ow">in</span> <span class="n">comp_range</span><span class="p">:</span>
+        <span class="n">_plot_component</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">comp_id</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="n">top_k</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="plot_component"><a class="viewcode-back" href="../../ensign/autogen/ensign.visualize.plot_component.html#ensign.visualize.plot_component">[docs]</a><span class="k">def</span> <span class="nf">plot_component</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">comp_id</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Visualizes a specific component of a decomposition using blue-line charts.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    decomp : CPDecomp</span>
+<span class="sd">        Decomposition object from which to visualize a component.</span>
+<span class="sd">    comp_id : int</span>
+<span class="sd">        The ID of the component to visualize.</span>
+<span class="sd">    inline : bool</span>
+<span class="sd">        Set to True if using within a Jupyter notebook and False to get PNG</span>
+<span class="sd">        file as output. The output file is named &#39;_comp_&lt;comp_id&gt;.png&#39;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fig : matplotlib.figure.Figure</span>
+<span class="sd">        Figure object representing visualization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">top_k</span> <span class="o">=</span> <span class="n">ctk</span><span class="o">.</span><span class="n">get_top_k</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">,</span> <span class="n">decomp</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span> <span class="p">[</span><span class="n">comp_id</span><span class="p">],</span> <span class="mi">10</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_plot_component</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">comp_id</span><span class="p">,</span> <span class="n">top_k</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="n">inline</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">_plot_component</span><span class="p">(</span><span class="n">decomp</span><span class="p">,</span> <span class="n">comp_id</span><span class="p">,</span> <span class="n">top_k</span><span class="p">,</span> <span class="n">inline</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Driver function for plot_component(). Separated so that the Top 10 labels</span>
+<span class="sd">    are calculated for every component ahead of time instead of every process</span>
+<span class="sd">    computing the Top 10 for the components it&#39;s responsible for.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    decomp : CPDecomp</span>
+<span class="sd">        Decomposition object from which to visualize a component.</span>
+<span class="sd">    comp_id : int</span>
+<span class="sd">        The ID of the component to visualize.</span>
+<span class="sd">    top_k : {int: {int: (str, int, float)}}</span>
+<span class="sd">        Top-K results. See ensign.comp_top_k</span>
+<span class="sd">    inline : bool</span>
+<span class="sd">        Set to True if using within a Jupyter notebook and False to get PNG</span>
+<span class="sd">        file as output. The output file is named &#39;_comp_&lt;comp_id&gt;.png&#39;.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fig : matplotlib.figure.Figure</span>
+<span class="sd">        Figure object representing visualization.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">inline</span><span class="p">:</span>
+        <span class="n">FIG_WIDTH</span><span class="p">,</span> <span class="n">FIG_HEIGHT</span><span class="p">,</span> <span class="n">TITLE_SIZE</span><span class="p">,</span> <span class="n">TEXT_SIZE</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">10</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">FIG_WIDTH</span><span class="p">,</span> <span class="n">FIG_HEIGHT</span><span class="p">,</span> <span class="n">TITLE_SIZE</span><span class="p">,</span> <span class="n">TEXT_SIZE</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">9</span>
+
+    <span class="k">if</span> <span class="n">decomp</span><span class="o">.</span><span class="n">order</span> <span class="o">&gt;</span> <span class="n">MAX_MODE_PER_FRAME</span><span class="p">:</span>
+        <span class="n">decomp</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="n">MAX_MODE_PER_FRAME</span>
+
+    <span class="c1"># create figure</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">order</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="n">FIG_WIDTH</span><span class="p">,</span> <span class="n">FIG_HEIGHT</span><span class="p">)))</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">decomp</span><span class="o">.</span><span class="n">order</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">axes</span><span class="p">])</span>
+
+    <span class="n">plot_clct</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">frame_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">axes</span><span class="p">)):</span>
+        <span class="n">plot_clct</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="n">frame_num</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">([],</span> <span class="p">[],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">blit</span><span class="p">(</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bbox</span><span class="p">)</span>
+    <span class="n">line_collect</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">main_title</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s1">&#39;Component </span><span class="si">{}</span><span class="s1">, Weight: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comp_id</span><span class="p">,</span> <span class="n">decomp</span><span class="o">.</span><span class="n">weights</span><span class="p">[</span><span class="n">comp_id</span><span class="p">]),</span> 
+                                <span class="n">fontsize</span><span class="o">=</span><span class="n">TITLE_SIZE</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">1.02</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">order</span><span class="p">):</span>
+        <span class="c1"># retrieve important values for plotting</span>
+        <span class="n">mode_size</span> <span class="o">=</span> <span class="n">decomp</span><span class="o">.</span><span class="n">mode_sizes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span>
+        <span class="n">max_val</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">comp_id</span><span class="p">])</span>
+        <span class="n">min_val</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">comp_id</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">max_val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">min_val</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">y_min</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">y_max</span> <span class="o">=</span> <span class="n">AXIS_SCALE_OVERHEAD</span> <span class="o">*</span> <span class="n">max_val</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">max_val</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">min_val</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">y_min</span> <span class="o">=</span> <span class="n">AXIS_SCALE_OVERHEAD</span> <span class="o">*</span> <span class="n">min_val</span>
+            <span class="n">y_max</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y_min</span> <span class="o">=</span> <span class="n">AXIS_SCALE_OVERHEAD</span> <span class="o">*</span> <span class="n">min_val</span>
+            <span class="n">y_max</span> <span class="o">=</span> <span class="n">AXIS_SCALE_OVERHEAD</span> <span class="o">*</span> <span class="n">max_val</span>
+            
+        <span class="k">if</span> <span class="p">(</span><span class="n">max_val</span> <span class="o">-</span> <span class="n">min_val</span> <span class="o">&lt;</span> <span class="n">TOLERANCE_VALUE</span><span class="p">):</span>
+            <span class="n">max_val</span> <span class="o">=</span> <span class="n">min_val</span> <span class="o">+</span> <span class="n">TOLERANCE_VALUE</span>
+
+        <span class="c1"># set up axes</span>
+        <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="n">xmin</span><span class="o">=-</span><span class="n">X_AXIS_OVERHEAD</span> <span class="o">*</span> <span class="n">mode_size</span><span class="p">,</span> 
+                            <span class="n">xmax</span><span class="o">=</span><span class="p">(</span><span class="n">mode_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">X_AXIS_OVERHEAD</span> <span class="o">*</span> <span class="n">mode_size</span><span class="p">)</span>
+        <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">labelsize</span><span class="o">=</span><span class="n">TEXT_SIZE</span><span class="p">)</span>
+        <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">get_xaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_major_locator</span><span class="p">(</span><span class="n">ticker</span><span class="o">.</span><span class="n">MaxNLocator</span><span class="p">(</span><span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+        <span class="c1"># draw the x-axis, as long as it is not too close to y_max or y_min</span>
+        <span class="n">smallest_view_increment</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_max</span> <span class="o">-</span> <span class="n">y_min</span><span class="p">)</span> <span class="o">/</span> <span class="mf">50.0</span>
+        <span class="k">if</span> <span class="n">y_min</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">smallest_view_increment</span> <span class="ow">and</span> <span class="n">y_max</span> <span class="o">&gt;</span> <span class="n">smallest_view_increment</span><span class="p">:</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
+
+        <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">mode_names</span><span class="p">[</span><span class="n">mode_id</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">TEXT_SIZE</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">comp_id</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Score ~ [-1, 1]&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">TEXT_SIZE</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Score ~ [0, 1]&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">TEXT_SIZE</span><span class="p">)</span>
+        <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39; Label Index ~ [0, </span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">mode_names</span><span class="p">[</span><span class="n">mode_id</span><span class="p">],</span> <span class="n">decomp</span><span class="o">.</span><span class="n">mode_sizes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]),</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">TEXT_SIZE</span><span class="p">)</span>
+        <span class="n">tick_marks</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">get_yticks</span><span class="p">()</span>
+
+        <span class="c1"># draw the bars</span>
+        <span class="k">if</span> <span class="n">mode_size</span> <span class="o">&lt;</span> <span class="n">DISCRETE_COUNT</span><span class="p">:</span>
+            <span class="c1"># store the LineCollections in dictionary line_collect, so they can be removed later</span>
+            <span class="c1"># if number of scores &lt; DISCRETE_COUNT; create a bar plot;</span>
+            <span class="c1"># otherwise, use linear plotting</span>
+            <span class="c1"># for discrete plotting, draw vertical lines to create bars representing the scores</span>
+            <span class="c1"># creates an array of lines with coordinates [0, score] (i.e., vertical lines)</span>
+            <span class="n">lin_segmnts</span> <span class="o">=</span> <span class="n">LineCollection</span><span class="p">([</span><span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">([</span><span class="n">elmnt</span><span class="p">,</span><span class="n">elmnt</span><span class="p">],</span> 
+                <span class="p">[</span><span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">comp_id</span><span class="p">][</span><span class="n">elmnt</span><span class="p">],</span> <span class="mi">0</span><span class="p">]))</span> <span class="k">for</span> <span class="n">elmnt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">mode_size</span><span class="p">)],</span> 
+                <span class="n">colors</span><span class="o">=</span><span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+            <span class="n">line_collect</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">lin_segmnts</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">add_collection</span><span class="p">(</span><span class="n">lin_segmnts</span><span class="p">)</span>
+
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="n">ymin</span><span class="o">=</span><span class="n">y_min</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="n">y_max</span><span class="p">,</span> <span class="n">xmin</span><span class="o">=-</span><span class="n">X_AXIS_OVERHEAD</span> <span class="o">*</span> <span class="n">mode_size</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="p">(</span><span class="n">mode_size</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">X_AXIS_OVERHEAD</span> <span class="o">*</span> <span class="n">mode_size</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">draw_artist</span><span class="p">(</span><span class="n">lin_segmnts</span><span class="p">)</span>
+            <span class="n">plot_clct</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_data</span><span class="p">([],[])</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mode_size</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">mode_size</span><span class="p">)</span>
+            <span class="n">plot_clct</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">indices</span><span class="p">,</span> <span class="n">decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span> <span class="n">comp_id</span><span class="p">])</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">relim</span><span class="p">()</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">autoscale</span><span class="p">()</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="n">xmin</span><span class="o">=-</span><span class="n">X_AXIS_OVERHEAD</span> <span class="o">*</span> <span class="n">mode_size</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="p">(</span><span class="n">mode_size</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">X_AXIS_OVERHEAD</span> <span class="o">*</span> <span class="n">mode_size</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">y_min</span><span class="p">,</span> <span class="n">y_max</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">draw_artist</span><span class="p">(</span><span class="n">plot_clct</span><span class="p">[</span><span class="n">mode_id</span><span class="p">])</span>
+
+        <span class="c1"># draw top k</span>
+        <span class="k">if</span> <span class="n">top_k</span><span class="p">:</span>
+            <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">get_ylim</span><span class="p">()</span>
+            <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">get_xlim</span><span class="p">()</span>
+            <span class="n">width</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">ymin</span><span class="p">)</span>
+            <span class="n">text_height</span> <span class="o">=</span> <span class="n">height</span> <span class="o">/</span> <span class="mi">10</span>
+            <span class="n">fontsize</span> <span class="o">=</span> <span class="n">TEXT_SIZE</span> <span class="o">-</span> <span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">decomp</span><span class="o">.</span><span class="n">order</span> <span class="o">-</span> <span class="mi">5</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">tup</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">top_k</span><span class="p">[</span><span class="n">comp_id</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]):</span>
+                <span class="n">label</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">tup</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+                <span class="n">text_y</span> <span class="o">=</span> <span class="n">ymax</span> <span class="o">-</span> <span class="p">(</span><span class="n">text_height</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">label</span><span class="p">[:</span><span class="mi">15</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;...&#39;</span> <span class="o">+</span> <span class="n">label</span><span class="p">[</span><span class="o">-</span><span class="mi">15</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">30</span> <span class="k">else</span> <span class="n">label</span>
+                <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">text_y</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="s2">&quot;  </span><span class="si">{:04d}</span><span class="s2"> | </span><span class="si">{}</span><span class="s2"> | </span><span class="si">{:04f}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">score</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">fontsize</span><span class="p">)</span>
+            <span class="n">axes</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">width</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">ymax</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="s2">&quot;  [Top 10] Index | Label | Score&quot;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="n">fontsize</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Save the figure</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">hspace</span><span class="o">=.</span><span class="mi">99</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">(</span><span class="n">rect</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">])</span>  
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">inline</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_comp_</span><span class="si">{}</span><span class="s1">.png&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">comp_id</span><span class="p">,</span> <span class="n">comp_id</span><span class="p">),</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">DPI</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

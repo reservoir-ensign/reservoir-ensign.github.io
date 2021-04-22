@@ -1,0 +1,23 @@
+ensign.sptensor.SPTensor
+========================
+
+.. currentmodule:: ensign.sptensor
+
+.. autoclass:: SPTensor
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SPTensor.__init__
+      ~SPTensor.write
+   
+   
+
+   
+   
+   

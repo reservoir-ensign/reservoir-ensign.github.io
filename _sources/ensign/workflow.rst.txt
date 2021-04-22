@@ -1,0 +1,165 @@
+Workflow
+========
+
+The workflow.py CLI tool carries out an entire process of analyzing a dataset 
+with ENSIGN. The provided scipt is intended to showcase the end-to-end 
+functionality of ENSIGN and the process of constructing a workflow. Users can
+take workflow.py as a starting point for creating their own custom workflow 
+based off the extensive API.
+
+The key steps of the workflow are as follows:
+
+- Building a sparse tensor from a dataset in CSV format
+
+- Decomposing the sparse tensor
+
+- Generating a visualization of the decomposition
+
+- Generating a textual report of the decomposition
+
+
+Workflow Configuration
+----------------------
+
+The proper environment variables must be set in the same way as in the 
+installation.
+
+
+A workflow configuration must be created to specify various options.
+
+
+- A template **workflow_cfg.yml** is provided in the **ENSIGN-43/ENSIGN_4.3/Ensign-Py3/test_data** directory 
+
+- Primary configuration options (that are mandatory to set) include:
+
+  ::
+
+    input_file: /path/to/input/files
+    save_dir: /path/to/output/directory
+
+  - Specification of the path to the input file 
+
+  - Specification of the path to the save directory
+
+
+- System configuration options
+
+  ::
+
+    mem_limit_gb: 3000
+    num_threads: 112 # Set to number of threads available, -1 uses all threads available
+
+  - System memory limit (in GB) to use for the workflow
+
+  - Number of cores/threads to use for the workflow
+
+
+- Tensor decomposition (CP-APR) options
+
+  ::
+
+    rank: 50
+    max_outer_iter: 10
+    max_inner_iter: 5
+
+  - Rank of the decomposition
+
+  - Number of maximum outer and inner iterations to set for decomposition
+
+  - See the User Guide for detailed information on these decomposition 
+    parameters 
+
+
+- Tensor construction options
+
+  ::
+
+    columns:
+      - ' Timestamp'
+      - ' Source IP'
+      - ' Destination IP'
+      - ' Destination Port'
+      - 'Flow Bytes/s'
+    types:
+      - datetime
+      - str
+      - str
+      - str
+      - float64
+    binning:
+      - second
+      - none
+      - none
+      - none
+      - log10
+
+  - These are custom options that are set specifically for each dataset. 
+
+  - Check the CLI options (csv2tensor.py -h) or the User Guide for additional 
+    information.
+
+  - Note: The suboptions in 'columns' in the example configuration file are in 
+    quotes because the column names in the example CIC DDoS2019 CSVs actually 
+    have a single whitespace before them. Otherwise, any whitespace after the 
+    dash in a YAML file is ignored.
+
+
+- IO Options to 'dump' the tensor and decomposition files to disk
+
+  ::
+
+    dump_tensor_files: True
+    dump_decomposition_files: True
+
+  - With large datasets, these write operations can be a bottleneck.
+
+  - The intermittent analyses (detectors, visualization, and textual report) 
+    are always written to disk, as they are not bottlenecks.
+
+
+- Post-process options 
+
+  ::
+
+    #   If use_detectors is True, the tensor needs the following modes:
+    #   [<timestamp>, <source IP>, <dest IP>, <dest port>]
+    use_detectors: True
+
+    #   Labelling for report and viz
+
+    #     To generate 'periodic' and 'burst' labels
+    #     -1 means there is no time mode
+    time_mode: 0
+
+    #     To generate 'dominant traffic' labels
+    #     -1 means there is no port mode
+    port_mode: 3
+
+  - *use_detectors* option requires the following modes (in that order) 
+    [timestamp, source IP, destination IP, destination port]. The names 
+    of the modes (column names in CSV) do NOT need to be anything specific. 
+    The time value (date, time, timestamp) mode should be typed as a time value 
+    and the rest should be strings.
+
+  - If the tensor includes modes that represent timestamps or ports, include 
+    their mode IDs in the options *time_mode* or *port_mode* to generate 
+    additional contextual information in the visualization and textual report.
+
+
+Running the Workflow
+--------------------
+::
+
+  $> workflow.py path/to/config
+
+For more information run: 
+::
+
+  $> workflow.py -h
+
+
+Workflow Walkthrough
+--------------------
+To learn more about the workflow and the tools its built upon, see the 
+**Workflow_Walkthrough.ipynb** Jupyter notebook in 
+**$ENSIGN_BASE/Ensign-Py3/demo**.

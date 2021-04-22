@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Interpreting Decompositions &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ENSIGN Python API" href="ensign.html" />
+    <link rel="prev" title="Data Ingest &amp; Preparation" href="data_ingest.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.html" title="ENSIGN Python API"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="data_ingest.html" title="Data Ingest &amp; Preparation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="interpreting-decompositions">
+<h1>Interpreting Decompositions<a class="headerlink" href="#interpreting-decompositions" title="Permalink to this headline">¶</a></h1>
+<p>Visualizations are the primary way of interpreting tensor decompositions. Here,
+we give a brief overview.</p>
+<p>For a deeper look at this tool and the process of analyzing decompositions,
+see the Jupyter notebook <strong>Interpreting_Decompositions.ipynb</strong> located at:
+<strong>$ENSIGN_BASE/Ensign-Py3/demo/</strong></p>
+<div class="section" id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Permalink to this headline">¶</a></h2>
+<p>The ‘blue line plot’ is the primary way to interpret decompositions.</p>
+<p>One of these plots of a single component is shown below:</p>
+<img alt="../_images/comp_example.png" src="../_images/comp_example.png" />
+<p>This chart consists of a header and a four graphs.</p>
+<p>The header gives the component identifier and its associated weight.</p>
+<p>Each graph plots the ‘activations’ of a single mode. The y-axis shows the
+strength or ‘score’ and the x-axis contains the indices of all the labels in
+the mode. The information on the right of each graph displays the top-10
+scoring labels in the mode.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Interpreting Decompositions</a><ul>
+<li><a class="reference internal" href="#visualization">Visualization</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="data_ingest.html"
+                        title="previous chapter">Data Ingest &amp; Preparation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.html"
+                        title="next chapter">ENSIGN Python API</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.html" title="ENSIGN Python API"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="data_ingest.html" title="Data Ingest &amp; Preparation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

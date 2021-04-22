@@ -1,0 +1,6 @@
+ensign.query\_decomp.query\_decomp
+==================================
+
+.. currentmodule:: ensign.query_decomp
+
+.. autofunction:: query_decomp

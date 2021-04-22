@@ -1,0 +1,6 @@
+ensign.decomp\_diff.decomp\_diff
+================================
+
+.. currentmodule:: ensign.decomp_diff
+
+.. autofunction:: decomp_diff

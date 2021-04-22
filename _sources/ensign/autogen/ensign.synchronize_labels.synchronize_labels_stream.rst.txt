@@ -1,0 +1,6 @@
+ensign.synchronize\_labels.synchronize\_labels\_stream
+======================================================
+
+.. currentmodule:: ensign.synchronize_labels
+
+.. autofunction:: synchronize_labels_stream

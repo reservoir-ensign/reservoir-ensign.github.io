@@ -1,0 +1,70 @@
+Demo
+====
+
+The demos provide interactive demonstrations of the ENSIGN Python 
+functionality.
+
+Jupyter Notebook Demos
+----------------------
+
+The notebooks are located in **$ENSIGN_BASE/Ensign-Py3/demo/**
+
+* Tour_of_Ensign-Py3.ipynb
+
+A general tour of functionality provided with Ensign-Py3
+
+* Interpreting_Decompositions.ipynb
+
+Develops understanding of decompositions and how to derive insights from them
+
+
+Running Jupyter Demos on a Local Machine
+----------------------------------------
+
+This is the case when ENSIGN is installed on a machine with a GUI and a 
+browser.
+
+::
+
+    cd $ENSIGN_BASE/Ensign-Py3/demo
+    jupyter notebook
+
+A browser should appear with a filetree. Click on the demo of choice to begin.
+
+
+Running Jupyter Demos on a Remote Machine
+-----------------------------------------
+
+This is the case when ENSIGN is installed on a remote machine without a GUI 
+and browser.
+
+On the remote machine:
+
+::
+
+    cd $ENSIGN_BASE/Ensign-Py3/demo
+    jupyter notebook --no-browser --port=8888
+
+On a local machine:
+
+::
+
+    ssh -N -L 8888:localhost:8888 user@host
+
+Then navigate to "localhost:8888" on a local browser.
+
+**Note**: If port 8888 is in use, it can be changed with the `--port` option
+and correspondingly in the `ssh` call.
+
+Demo Application
+----------------
+
+Demonstrates basic decomposition functionality and the reading and writing of 
+tensors when using the Python API.
+
+Located at: **$ENSIGN_BASE/Ensign-Py3/demo/basic/**
+
+::
+
+    cd $ENSIGN_BASE/Ensign-Py3/demo
+    python basic/basic.py

@@ -1,0 +1,26 @@
+.. Ensign Python documentation index
+
+ENSIGN Python
+=============
+
+The ENSIGN Python API enables access to ENSIGN sparse tensor decompositions in
+addition to data structures and IO routines for sparse tensors and tensor 
+decompositions. The API also provides access to tools for building sparse 
+tensors from CSV files and Pandas DataFrames. Further, the API provides access 
+to tools for postprocessing, querying, analyzing, and visualizing tensor 
+decompositions. Finally, ENSIGN Python includes basic demonstration 
+applications.
+
+Please see the ENSIGN User Guide for detailed examples of Python API usage.
+
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+   :titlesonly:
+
+   ensign/prereqs
+   ensign/demo
+   ensign/data_ingest
+   ensign/interpreting_decomps
+   ensign/ensign

@@ -1,0 +1,225 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Workflow &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="workflow">
+<h1>Workflow<a class="headerlink" href="#workflow" title="Permalink to this headline">¶</a></h1>
+<p>The workflow.py CLI tool carries out an entire process of analyzing a dataset
+with ENSIGN. The provided scipt is intended to showcase the end-to-end
+functionality of ENSIGN and the process of constructing a workflow. Users can
+take workflow.py as a starting point for creating their own custom workflow
+based off the extensive API.</p>
+<p>The key steps of the workflow are as follows:</p>
+<ul class="simple">
+<li><p>Building a sparse tensor from a dataset in CSV format</p></li>
+<li><p>Decomposing the sparse tensor</p></li>
+<li><p>Generating a visualization of the decomposition</p></li>
+<li><p>Generating a textual report of the decomposition</p></li>
+</ul>
+<div class="section" id="workflow-configuration">
+<h2>Workflow Configuration<a class="headerlink" href="#workflow-configuration" title="Permalink to this headline">¶</a></h2>
+<p>The proper environment variables must be set in the same way as in the
+installation.</p>
+<p>A workflow configuration must be created to specify various options.</p>
+<ul>
+<li><p>A template <strong>workflow_cfg.yml</strong> is provided in the <strong>ENSIGN-43/ENSIGN_4.3/Ensign-Py3/test_data</strong> directory</p></li>
+<li><p>Primary configuration options (that are mandatory to set) include:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">input_file</span><span class="p">:</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="nb">input</span><span class="o">/</span><span class="n">files</span>
+<span class="n">save_dir</span><span class="p">:</span> <span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">output</span><span class="o">/</span><span class="n">directory</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Specification of the path to the input file</p></li>
+<li><p>Specification of the path to the save directory</p></li>
+</ul>
+</li>
+<li><p>System configuration options</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mem_limit_gb</span><span class="p">:</span> <span class="mi">3000</span>
+<span class="n">num_threads</span><span class="p">:</span> <span class="mi">112</span> <span class="c1"># Set to number of threads available, -1 uses all threads available</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>System memory limit (in GB) to use for the workflow</p></li>
+<li><p>Number of cores/threads to use for the workflow</p></li>
+</ul>
+</li>
+<li><p>Tensor decomposition (CP-APR) options</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rank</span><span class="p">:</span> <span class="mi">50</span>
+<span class="n">max_outer_iter</span><span class="p">:</span> <span class="mi">10</span>
+<span class="n">max_inner_iter</span><span class="p">:</span> <span class="mi">5</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Rank of the decomposition</p></li>
+<li><p>Number of maximum outer and inner iterations to set for decomposition</p></li>
+<li><p>See the User Guide for detailed information on these decomposition
+parameters</p></li>
+</ul>
+</li>
+<li><p>Tensor construction options</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">columns</span><span class="p">:</span>
+  <span class="o">-</span> <span class="s1">&#39; Timestamp&#39;</span>
+  <span class="o">-</span> <span class="s1">&#39; Source IP&#39;</span>
+  <span class="o">-</span> <span class="s1">&#39; Destination IP&#39;</span>
+  <span class="o">-</span> <span class="s1">&#39; Destination Port&#39;</span>
+  <span class="o">-</span> <span class="s1">&#39;Flow Bytes/s&#39;</span>
+<span class="n">types</span><span class="p">:</span>
+  <span class="o">-</span> <span class="n">datetime</span>
+  <span class="o">-</span> <span class="nb">str</span>
+  <span class="o">-</span> <span class="nb">str</span>
+  <span class="o">-</span> <span class="nb">str</span>
+  <span class="o">-</span> <span class="n">float64</span>
+<span class="n">binning</span><span class="p">:</span>
+  <span class="o">-</span> <span class="n">second</span>
+  <span class="o">-</span> <span class="n">none</span>
+  <span class="o">-</span> <span class="n">none</span>
+  <span class="o">-</span> <span class="n">none</span>
+  <span class="o">-</span> <span class="n">log10</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>These are custom options that are set specifically for each dataset.</p></li>
+<li><p>Check the CLI options (csv2tensor.py -h) or the User Guide for additional
+information.</p></li>
+<li><p>Note: The suboptions in ‘columns’ in the example configuration file are in
+quotes because the column names in the example CIC DDoS2019 CSVs actually
+have a single whitespace before them. Otherwise, any whitespace after the
+dash in a YAML file is ignored.</p></li>
+</ul>
+</li>
+<li><p>IO Options to ‘dump’ the tensor and decomposition files to disk</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dump_tensor_files</span><span class="p">:</span> <span class="kc">True</span>
+<span class="n">dump_decomposition_files</span><span class="p">:</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>With large datasets, these write operations can be a bottleneck.</p></li>
+<li><p>The intermittent analyses (detectors, visualization, and textual report)
+are always written to disk, as they are not bottlenecks.</p></li>
+</ul>
+</li>
+<li><p>Post-process options</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#   If use_detectors is True, the tensor needs the following modes:</span>
+<span class="c1">#   [&lt;timestamp&gt;, &lt;source IP&gt;, &lt;dest IP&gt;, &lt;dest port&gt;]</span>
+<span class="n">use_detectors</span><span class="p">:</span> <span class="kc">True</span>
+
+<span class="c1">#   Labelling for report and viz</span>
+
+<span class="c1">#     To generate &#39;periodic&#39; and &#39;burst&#39; labels</span>
+<span class="c1">#     -1 means there is no time mode</span>
+<span class="n">time_mode</span><span class="p">:</span> <span class="mi">0</span>
+
+<span class="c1">#     To generate &#39;dominant traffic&#39; labels</span>
+<span class="c1">#     -1 means there is no port mode</span>
+<span class="n">port_mode</span><span class="p">:</span> <span class="mi">3</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><em>use_detectors</em> option requires the following modes (in that order)
+[timestamp, source IP, destination IP, destination port]. The names
+of the modes (column names in CSV) do NOT need to be anything specific.
+The time value (date, time, timestamp) mode should be typed as a time value
+and the rest should be strings.</p></li>
+<li><p>If the tensor includes modes that represent timestamps or ports, include
+their mode IDs in the options <em>time_mode</em> or <em>port_mode</em> to generate
+additional contextual information in the visualization and textual report.</p></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="running-the-workflow">
+<h2>Running the Workflow<a class="headerlink" href="#running-the-workflow" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$&gt; workflow.py path/to/config
+</pre></div>
+</div>
+<p>For more information run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$&gt; workflow.py -h
+</pre></div>
+</div>
+</div>
+<div class="section" id="workflow-walkthrough">
+<h2>Workflow Walkthrough<a class="headerlink" href="#workflow-walkthrough" title="Permalink to this headline">¶</a></h2>
+<p>To learn more about the workflow and the tools its built upon, see the
+<strong>Workflow_Walkthrough.ipynb</strong> Jupyter notebook in
+<strong>$ENSIGN_BASE/Ensign-Py3/demo</strong>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Workflow</a><ul>
+<li><a class="reference internal" href="#workflow-configuration">Workflow Configuration</a></li>
+<li><a class="reference internal" href="#running-the-workflow">Running the Workflow</a></li>
+<li><a class="reference internal" href="#workflow-walkthrough">Workflow Walkthrough</a></li>
+</ul>
+</li>
+</ul>
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

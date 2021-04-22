@@ -1,0 +1,6 @@
+ensign.csv2tensor.csv2tensor
+============================
+
+.. currentmodule:: ensign.csv2tensor
+
+.. autofunction:: csv2tensor

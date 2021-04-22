@@ -1,0 +1,6 @@
+ensign.cp\_decomp.read\_cp\_decomp\_dir
+=======================================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autofunction:: read_cp_decomp_dir

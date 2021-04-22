@@ -1,0 +1,642 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.synchronize_labels &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ensign.synchronize_labels</h1><div class="highlight"><pre>
+<span></span><span class="c1"># ENSIGN rights</span>
+<span class="sd">&quot;&quot;&quot; Adjusts labels of multiple tensors and/or CP decompositions such that </span>
+<span class="sd">identical labels (e.g., &quot;1/1/1970&quot;, &quot;10.1.1.1&quot;) map to unique indices</span>
+<span class="sd">(e.g., 5, 437).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">ensign.cp_decomp</span> <span class="k">as</span> <span class="nn">cpd</span>
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.decomp_io</span> <span class="k">as</span> <span class="nn">dio</span>
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.ensign_logging</span> <span class="k">as</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.sptensor_io</span> <span class="k">as</span> <span class="nn">sio</span>
+<span class="kn">import</span> <span class="nn">ensign.sptensor</span> <span class="k">as</span> <span class="nn">spt</span>
+
+<span class="n">BASE_IDX</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">UPDATE_IDX</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+<div class="viewcode-block" id="synchronize_labels"><a class="viewcode-back" href="../../ensign/autogen/ensign.synchronize_labels.synchronize_labels.html#ensign.synchronize_labels.synchronize_labels">[docs]</a><span class="k">def</span> <span class="nf">synchronize_labels</span><span class="p">(</span><span class="n">tensor_dirs</span><span class="p">,</span> <span class="n">modes_to_sync</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">modes_to_sort</span><span class="o">=</span><span class="p">[],</span> <span class="n">output</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">in_place</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Synchronizes labels between tensors. Rewrites each tensor in terms of the new label indices.</span>
+<span class="sd">    Does not preserve the ordering of any mode maps.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters </span>
+<span class="sd">    ----------</span>
+<span class="sd">    tensor_dirs : list of str or CPDecomp/SPTensor</span>
+<span class="sd">        Paths to directories containing tensors to be synchronized.</span>
+<span class="sd">        Or CPDecomp/SPTensor objects.</span>
+<span class="sd">        The tensor in the zeroeth place is treated as tensor 0, tensor</span>
+<span class="sd">        in place one will be treated as tensor 1, etc.</span>
+<span class="sd">    modes_to_sync : list of lists of int</span>
+<span class="sd">        Specifies which modes of each tensor to synchronize.</span>
+<span class="sd">        e.g. [[0,1,2], [1,2,3]] synchronizes modes 0,1,2 of tensor 0</span>
+<span class="sd">        to modes 1,2,3 of tensor 1 respectively.</span>
+<span class="sd">        Default: synchronizes all modes seen in the initial tensor. </span>
+<span class="sd">    modes_to_sort: list of int</span>
+<span class="sd">        Specifies which of the synchronized mode tuples, indexed from zero, </span>
+<span class="sd">        given in modes_to_sync will be sorted according to their labels. For </span>
+<span class="sd">        example, if modes_to_sync is [[1,2,3],[4,5,6]] and modes_to_sort is [0,2]</span>
+<span class="sd">        then the (first tensor mode, second tensor mode) synchronized tuples are </span>
+<span class="sd">        (1,4), (2,5), and (3,6) and modes 1 and 3 of the first tensor and modes </span>
+<span class="sd">        4 and 6 of the second tensor will be sorted.</span>
+<span class="sd">    output : str</span>
+<span class="sd">        Directory to save the synchronized base and update to. Directories named</span>
+<span class="sd">        &#39;base&#39; and &#39;update&#39; in the output directory will be overwritten.</span>
+<span class="sd">        Default: Do not save to disk.</span>
+<span class="sd">    in_place : bool</span>
+<span class="sd">        Overwrite the specified base_dir and update_dir. If toggled, the output</span>
+<span class="sd">        option will be ignored. Default: False</span>
+<span class="sd">    verbose : bool</span>
+<span class="sd">        Display verbose output. Default: False</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of CPDecomp/SPTensor</span>
+<span class="sd">        List of synchronized CPDecomp and/or SPTensor objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">_set_log_level</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">_set_log_level</span><span class="p">(</span><span class="s1">&#39;WARN&#39;</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Reading in tensors/decompositions ...&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">tensor1</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tensor_dirs</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">tensor2</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tensor_dirs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="n">j</span> <span class="ow">and</span> <span class="n">tensor1</span> <span class="o">==</span> <span class="n">tensor2</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Duplicate tensors/decompositions listed. They must be distinct.&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">tensors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">tensor_dir</span> <span class="ow">in</span> <span class="n">tensor_dirs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tensor_dir</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">tensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">read_tensor_decomp_files</span><span class="p">(</span><span class="n">tensor_dir</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tensors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">convert_cpdecomp_or_sptensor_to_dict</span><span class="p">(</span><span class="n">tensor_dir</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">modes_to_sync</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">tensor</span> <span class="ow">in</span> <span class="n">tensors</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">tensors</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;order&#39;</span><span class="p">]:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;If &#39;modes_to_sync&#39; is not specified, all tensors must have the same order.&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">modes_to_sync</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">tensors</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;order&#39;</span><span class="p">]))]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">tensor_dirs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">modes_to_sync</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Must be synchronizing the same number of modes between all tensors/decompositions.&#39;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tensor_dirs</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Each directory to be synchronized must have a corresponding comma-separated list of modes to synchronize.&#39;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="n">modes_to_sort</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">mode_id</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">mode_id</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Specified modes to sort must be synchronized modes.&#39;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">modes</span><span class="p">,</span> <span class="n">tensor</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">,</span> <span class="n">tensors</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">mode</span> <span class="ow">in</span> <span class="n">modes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">mode</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">mode</span> <span class="o">&gt;=</span> <span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Mode: </span><span class="si">{}</span><span class="s2"> in modes_to_sync invalid.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">local_to_global_mode_ids</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">synced_mode_maps</span> <span class="o">=</span> <span class="p">[[]]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">output</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">in_place</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+    <span class="c1"># Loop through tensors and build globally synced mode maps</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Building synchronized mode maps ...&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">tensor_id</span><span class="p">,</span> <span class="n">tensor</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tensors</span><span class="p">):</span>
+        <span class="n">local_to_global_mode_ids</span><span class="o">.</span><span class="n">append</span><span class="p">({})</span>
+        
+        <span class="k">for</span> <span class="n">synced_mode_id</span><span class="p">,</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">[</span><span class="n">tensor_id</span><span class="p">]):</span>
+            <span class="n">synced_mode_map</span> <span class="o">=</span> <span class="n">synced_mode_maps</span><span class="p">[</span><span class="n">synced_mode_id</span><span class="p">]</span>
+            <span class="n">synced_mode_map</span> <span class="o">=</span> <span class="n">synced_mode_map</span> <span class="o">+</span> <span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">synced_mode_id</span> <span class="ow">in</span> <span class="n">modes_to_sort</span><span class="p">:</span>
+                <span class="n">synced_mode_maps</span><span class="p">[</span><span class="n">synced_mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">synced_mode_map</span><span class="p">)))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">synced_mode_maps</span><span class="p">[</span><span class="n">synced_mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">synced_mode_map</span><span class="p">))</span>
+
+            <span class="n">local_to_global_mode_ids</span><span class="p">[</span><span class="n">tensor_id</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">synced_mode_id</span>
+
+    <span class="n">synced_labels_dicts</span> <span class="o">=</span> <span class="p">[{</span><span class="n">label</span><span class="p">:</span> <span class="n">idx</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">synced_mode_map</span><span class="p">)}</span> <span class="k">for</span> <span class="n">synced_mode_map</span> <span class="ow">in</span> <span class="n">synced_mode_maps</span><span class="p">]</span>
+
+    <span class="c1"># Loop through tensors and rewrite</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Rewriting tensors/decompositions ...&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">tensor_id</span><span class="p">,</span> <span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">tensor_dir</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">tensors</span><span class="p">,</span> <span class="n">tensor_dirs</span><span class="p">)):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Synchronizing tensor </span><span class="si">{}</span><span class="s1"> ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tensor_id</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="n">modes_to_sync</span><span class="p">[</span><span class="n">tensor_id</span><span class="p">]:</span>
+            <span class="n">synced_mode_map</span> <span class="o">=</span> <span class="n">synced_labels_dicts</span><span class="p">[</span><span class="n">local_to_global_mode_ids</span><span class="p">[</span><span class="n">tensor_id</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]]</span>
+
+            <span class="n">old_labels</span> <span class="o">=</span> <span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;    Incorporating </span><span class="si">{}</span><span class="s1"> new labels into mode </span><span class="si">{}</span><span class="s1"> ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">synced_mode_map</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">old_labels</span><span class="p">),</span> <span class="n">mode_id</span><span class="p">))</span>
+
+            <span class="c1"># Rewrite labels</span>
+            <span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">synced_mode_maps</span><span class="p">[</span><span class="n">local_to_global_mode_ids</span><span class="p">[</span><span class="n">tensor_id</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]]</span>
+
+            <span class="c1"># Rewrite sptensor entries column</span>
+            <span class="k">if</span> <span class="s1">&#39;sptensor&#39;</span> <span class="ow">in</span> <span class="n">tensor</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">sync_sptensor_entries</span><span class="p">(</span><span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">mode_id</span><span class="p">],</span> 
+                                          <span class="n">old_labels</span><span class="p">,</span> <span class="n">synced_mode_map</span><span class="p">)</span>
+
+            <span class="c1"># Rewrite factor matrix</span>
+            <span class="k">if</span> <span class="s1">&#39;factor_matrices&#39;</span> <span class="ow">in</span> <span class="n">tensor</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> \
+                    <span class="n">sync_factor_matrix</span><span class="p">(</span><span class="n">tensor</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">],</span> 
+                                       <span class="n">old_labels</span><span class="p">,</span> <span class="n">synced_mode_map</span><span class="p">)</span>
+
+        <span class="c1"># Write to disk</span>
+        <span class="k">if</span> <span class="n">in_place</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Overwriting </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tensor_dir</span><span class="p">))</span>
+            <span class="n">write_tensor_decomp_files</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">tensor_dir</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">output</span><span class="p">:</span>
+            <span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;tensor_</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tensor_id</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Writing </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tensor_dir</span><span class="p">,</span> <span class="n">save_path</span><span class="p">))</span>
+            <span class="n">write_tensor_decomp_files</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">save_path</span><span class="p">)</span>
+
+    <span class="n">finish</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Finished synchronizing </span><span class="si">{}</span><span class="s1"> tensors/decompositions over </span><span class="si">{}</span><span class="s1"> modes in </span><span class="si">{}</span><span class="s1"> seconds.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tensors</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">finish</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">convert_dict_to_sptensor_or_cpdecomp</span><span class="p">(</span><span class="n">tensor</span><span class="p">)</span> <span class="k">for</span> <span class="n">tensor</span> <span class="ow">in</span> <span class="n">tensors</span><span class="p">]</span>    </div>
+
+<div class="viewcode-block" id="synchronize_labels_stream"><a class="viewcode-back" href="../../ensign/autogen/ensign.synchronize_labels.synchronize_labels_stream.html#ensign.synchronize_labels.synchronize_labels_stream">[docs]</a><span class="k">def</span> <span class="nf">synchronize_labels_stream</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span> <span class="n">update_dir</span><span class="p">,</span> <span class="n">streaming_mode</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">in_place</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ignore_base_tensor</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Synchronizes specified modes between a base decomposition and an update tensor. </span>
+<span class="sd">    Will attempt to synchronize tensor_data.txt files, decomp_mode_&lt;x&gt;.txt files</span>
+<span class="sd">    and map_mode_&lt;x&gt;.txt files. Preserves the ordering of the mode maps of the base</span>
+<span class="sd">    tensor.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters </span>
+<span class="sd">    ----------</span>
+<span class="sd">    base_dir : str or CPDecomp/SPTensor</span>
+<span class="sd">        Paths to base directory containing a tensor and/or decomposition. New indices </span>
+<span class="sd">        are appended to the mode maps and factor matrices of this decomposition to </span>
+<span class="sd">        preserve the original order. Must contain mode maps.</span>
+<span class="sd">    update_dir : str or CPDecomp/SPTensor</span>
+<span class="sd">        Paths to update directory containing a tensor and/or decomposition. Mode maps </span>
+<span class="sd">        and tensor data files are rewritten in terms of the new label indices.</span>
+<span class="sd">        Must contain mode maps.</span>
+<span class="sd">        Note: Any decomposition files will be updated according to new label indices, </span>
+<span class="sd">        however an existing decomposition will be invalidated if overlapping labels </span>
+<span class="sd">        exist in the streaming mode between the update and base. </span>
+<span class="sd">    streaming_mode : int</span>
+<span class="sd">        Mode to stream along. Every other mode will be synchronized. Overlapping </span>
+<span class="sd">        labels in the streaming mode will be removed from the update, along with </span>
+<span class="sd">        any tensor entries that contain these labels. Removed entries will be </span>
+<span class="sd">        logged to a file named &#39;dropped.csv&#39;. Default: 0.</span>
+<span class="sd">    output : str</span>
+<span class="sd">        Directory to save the synchronized base and update to. Directories named</span>
+<span class="sd">        &#39;base&#39; and &#39;update&#39; in the output directory will be overwritten.</span>
+<span class="sd">        Default: Do not save to disk.</span>
+<span class="sd">    in_place : bool</span>
+<span class="sd">        Overwrite the specified base_dir and update_dir. If toggled, the output</span>
+<span class="sd">        option will be ignored. Default: False</span>
+<span class="sd">    ignore_base_tensor : bool</span>
+<span class="sd">        Performance option. Will only synchronize the base decomposition and the</span>
+<span class="sd">        update tensor/decomposition. If a tensor_data.txt file exists in the base </span>
+<span class="sd">        directory, it will not be updated to reflect the synchronization, and it will be </span>
+<span class="sd">        invalid with respect to the map_mode_&lt;x&gt;.txt and decomp_mode_&lt;x&gt;.txt files.</span>
+<span class="sd">        Default: False</span>
+<span class="sd">    verbose : bool</span>
+<span class="sd">        Display verbose output. Default: False.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (base, update) : (CPDecomp/SPTensor, CPDecomp/SPTensor)</span>
+<span class="sd">        Returns either CPDecomp objects or SPTensor objects. If</span>
+<span class="sd">        factor matrices are available, CPDecomp objects will be</span>
+<span class="sd">        returned. Otherwise, SPTensor objects will be returned.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">_set_log_level</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">_set_log_level</span><span class="p">(</span><span class="s1">&#39;WARN&#39;</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Loading decompositions and/or tensors ...&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span> <span class="c1"># If one is a CPDecomp instance, and the other an SPTensor instance, testing equality will raise an exception</span>
+        <span class="k">if</span> <span class="n">base_dir</span> <span class="o">==</span> <span class="n">update_dir</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Base and update tensors/decompositions are already the same. Nothing to synchronize.&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">base_dir</span><span class="p">,</span> <span class="n">update_dir</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">read_tensor_decomp_files</span><span class="p">(</span><span class="n">base_dir</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">convert_cpdecomp_or_sptensor_to_dict</span><span class="p">(</span><span class="n">base_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">update_dir</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">update</span> <span class="o">=</span> <span class="n">read_tensor_decomp_files</span><span class="p">(</span><span class="n">update_dir</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">update</span> <span class="o">=</span> <span class="n">convert_cpdecomp_or_sptensor_to_dict</span><span class="p">(</span><span class="n">update_dir</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">base</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">update</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Base and update tensors must have the same order.&#39;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">streaming_mode</span> <span class="o">&gt;=</span> <span class="n">base</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">streaming_mode</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Streaming mode invalid.&#39;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">modes_to_sync</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]))]</span> <span class="o">*</span> <span class="mi">2</span>
+    <span class="n">modes_to_sync</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">streaming_mode</span><span class="p">)</span> <span class="c1"># Removes &#39;streaming_mode&#39; from both sublists</span>
+
+    <span class="n">clean_overlap</span> <span class="o">=</span> <span class="p">[</span><span class="n">streaming_mode</span><span class="p">,</span> <span class="n">streaming_mode</span><span class="p">]</span>
+
+    <span class="c1"># Create the save directory</span>
+    <span class="k">if</span> <span class="n">output</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">in_place</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+    <span class="n">dropped_entries</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">clean_overlap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Cleaning overlap between mode </span><span class="si">{}</span><span class="s1"> of base and mode </span><span class="si">{}</span><span class="s1"> of update ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">clean_overlap</span><span class="p">[</span><span class="n">BASE_IDX</span><span class="p">],</span> <span class="n">clean_overlap</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">]))</span>
+
+        <span class="n">overlap</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">clean_overlap</span><span class="p">[</span><span class="n">BASE_IDX</span><span class="p">]])</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">clean_overlap</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">]]))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">overlap</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">clean_overlap</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">]]):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Every label in the streaming mode of the update tensor exists in the base, there are no new values to stream.&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">overlap</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Removing </span><span class="si">{}</span><span class="s1"> labels from mode </span><span class="si">{}</span><span class="s1"> of the update tensor ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">overlap</span><span class="p">),</span> <span class="n">clean_overlap</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">]))</span>
+            <span class="n">clean_mode_map</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">clean_overlap</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">]])</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">overlap</span><span class="p">:</span>
+                <span class="n">clean_mode_map</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+            <span class="n">update</span><span class="p">,</span> <span class="n">dropped_entries</span> <span class="o">=</span> <span class="n">scrub_overlap_entries</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">overlap</span><span class="p">,</span> <span class="n">clean_mode_map</span><span class="p">,</span> <span class="n">clean_overlap</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">])</span>
+            <span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">clean_overlap</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">]]</span> <span class="o">=</span> <span class="n">clean_mode_map</span>
+
+    <span class="c1"># Synchronize mode by mode</span>
+    <span class="k">for</span> <span class="n">base_mode_id</span><span class="p">,</span> <span class="n">update_mode_id</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">modes_to_sync</span><span class="p">[</span><span class="n">BASE_IDX</span><span class="p">],</span> <span class="n">modes_to_sync</span><span class="p">[</span><span class="n">UPDATE_IDX</span><span class="p">]):</span>
+        <span class="n">base</span><span class="p">,</span> <span class="n">update</span> <span class="o">=</span> <span class="n">synchronize_mode</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">update</span><span class="p">,</span> <span class="n">base_mode_id</span><span class="p">,</span> <span class="n">update_mode_id</span><span class="p">,</span> <span class="n">ignore_base_tensor</span><span class="p">,</span> <span class="n">overlap</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Writing to disk ...&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;sptensor&#39;</span> <span class="ow">in</span> <span class="n">update</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Update tensor is of size 0. Check input data or options.&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">in_place</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Writing base to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">base_dir</span><span class="p">))</span>
+        <span class="n">write_tensor_decomp_files</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Writing update to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">update_dir</span><span class="p">))</span>
+        <span class="n">write_tensor_decomp_files</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">update_dir</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dropped_entries</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">update_dir</span><span class="p">,</span> <span class="s1">&#39;dropped.csv&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;entry_val&#39;</span><span class="p">,</span> <span class="s1">&#39;entry_idx&#39;</span><span class="p">]))</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dropped_entries</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">output</span><span class="p">:</span>
+        <span class="n">base_save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;base&#39;</span><span class="p">)</span>
+        <span class="n">update_save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;update&#39;</span><span class="p">)</span>       
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Writing base to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">base_save_path</span><span class="p">))</span>
+        <span class="n">write_tensor_decomp_files</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">base_save_path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Writing update to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">update_save_path</span><span class="p">))</span>
+        <span class="n">write_tensor_decomp_files</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">update_save_path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dropped_entries</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">update_save_path</span><span class="p">,</span> <span class="s1">&#39;dropped.csv&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;entry_val&#39;</span><span class="p">,</span> <span class="s1">&#39;entry_idx&#39;</span><span class="p">]))</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dropped_entries</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">row</span><span class="p">))</span> 
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="n">finish</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Finished synchronization in </span><span class="si">{}</span><span class="s1"> seconds.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">finish</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">convert_dict_to_sptensor_or_cpdecomp</span><span class="p">(</span><span class="n">base</span><span class="p">),</span> <span class="n">convert_dict_to_sptensor_or_cpdecomp</span><span class="p">(</span><span class="n">update</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">convert_cpdecomp_or_sptensor_to_dict</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">):</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">,</span> <span class="n">cpd</span><span class="o">.</span><span class="n">CPDecomp</span><span class="p">):</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">order</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;weights&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">weights</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">factors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])}</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])}</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">mode_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])}</span>
+        <span class="k">if</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">sptensor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">sptensor</span><span class="o">.</span><span class="n">entries</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">if</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">streaming_dataless_fit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;streaming&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">streaming_dataless_fit</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">order</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])}</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">mode_names</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])}</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">entries</span><span class="o">.</span><span class="n">values</span>
+    <span class="k">return</span> <span class="n">ret</span>
+
+<span class="k">def</span> <span class="nf">convert_dict_to_sptensor_or_cpdecomp</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;factor_matrices&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">cpd</span><span class="o">.</span><span class="n">CPDecomp</span><span class="p">()</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">order</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">mode_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="o">.</span><span class="n">order</span><span class="p">)]</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="o">.</span><span class="n">order</span><span class="p">)]</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">mode_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="o">.</span><span class="n">order</span><span class="p">)]</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">factors</span> <span class="o">=</span> <span class="p">[</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ret</span><span class="o">.</span><span class="n">order</span><span class="p">)]</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">weights</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;weights&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s1">&#39;sptensor&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">ret</span><span class="o">.</span><span class="n">sptensor</span> <span class="o">=</span> <span class="n">spt</span><span class="o">.</span><span class="n">SPTensor</span><span class="p">(</span>
+                <span class="n">order</span><span class="o">=</span><span class="n">ret</span><span class="o">.</span><span class="n">order</span><span class="p">,</span>
+                <span class="n">nnz</span><span class="o">=</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">mode_sizes</span><span class="o">=</span><span class="n">ret</span><span class="o">.</span><span class="n">mode_sizes</span><span class="p">,</span>
+                <span class="n">mode_names</span><span class="o">=</span><span class="n">ret</span><span class="o">.</span><span class="n">mode_names</span><span class="p">,</span>
+                <span class="n">labels</span><span class="o">=</span><span class="n">ret</span><span class="o">.</span><span class="n">labels</span><span class="p">,</span>
+                <span class="n">entries</span><span class="o">=</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">ret</span>
+        <span class="k">if</span> <span class="s1">&#39;streaming&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">ret</span><span class="o">.</span><span class="n">streaming_dataless_fit</span> <span class="o">=</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;streaming&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s1">&#39;sptensor&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">spt</span><span class="o">.</span><span class="n">SPTensor</span><span class="p">(</span>
+                <span class="n">order</span><span class="o">=</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">],</span>
+                <span class="n">mode_sizes</span><span class="o">=</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])],</span>
+                <span class="n">mode_names</span><span class="o">=</span><span class="p">[</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])],</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])],</span>
+                <span class="n">entries</span><span class="o">=</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">],</span>
+                <span class="n">nnz</span><span class="o">=</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING returned sptensor only contains label information, no entries!&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">spt</span><span class="o">.</span><span class="n">SPTensor</span><span class="p">(</span>
+                <span class="n">order</span><span class="o">=</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">],</span>
+                <span class="n">mode_sizes</span><span class="o">=</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])],</span>
+                <span class="n">mode_names</span><span class="o">=</span><span class="p">[</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])],</span>
+                <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])]</span>
+            <span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">synchronize_mode</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">update</span><span class="p">,</span> <span class="n">base_mode_id</span><span class="p">,</span> <span class="n">update_mode_id</span><span class="p">,</span> <span class="n">ignore_base_tensor</span><span class="p">,</span> <span class="n">overlap</span><span class="p">):</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Synchronizing mode </span><span class="si">{}</span><span class="s1"> of base to mode </span><span class="si">{}</span><span class="s1"> of update ...&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">base_mode_id</span><span class="p">,</span> <span class="n">update_mode_id</span><span class="p">))</span>
+
+    <span class="c1"># Get labels</span>
+    <span class="n">base_labels</span> <span class="o">=</span> <span class="n">base</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">base_mode_id</span><span class="p">]</span>
+    <span class="n">update_labels</span> <span class="o">=</span> <span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">update_mode_id</span><span class="p">]</span>
+
+    <span class="c1"># Get synced mode map</span>
+    <span class="n">synced_labels</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">base_labels</span> <span class="o">+</span> <span class="n">update_labels</span><span class="p">)))</span>
+    <span class="n">synced_labels_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">idx</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">synced_labels</span><span class="p">)}</span>
+
+    <span class="c1"># Synchronize Factor Matrices ---------------------------------------------</span>
+    <span class="k">if</span> <span class="s1">&#39;factor_matrices&#39;</span> <span class="ow">in</span> <span class="n">base</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Synchronizing base factor matrix ...&#39;</span><span class="p">)</span>
+        <span class="n">base</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">base_mode_id</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">sync_factor_matrix</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">base_mode_id</span><span class="p">],</span> 
+                                <span class="n">base_labels</span><span class="p">,</span> <span class="n">synced_labels_dict</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="c1"># With sync_stream, base decomposition must exist</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s1">&#39;No decomposition files were found in base directory. Aborting.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;factor_matrices&#39;</span> <span class="ow">in</span> <span class="n">update</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">overlap</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;Decomposition files were found in update directory and &#39;</span><span class="o">+</span>
+            <span class="s1">&#39;overlapping labels were removed from the update tensor, the update &#39;</span> <span class="o">+</span>
+            <span class="s1">&#39;decomposition will no longer be valid.&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Synchronizing update factor matrix ...&#39;</span><span class="p">)</span>
+        <span class="n">update</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">update_mode_id</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">sync_factor_matrix</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">update_mode_id</span><span class="p">],</span> 
+                                <span class="n">update_labels</span><span class="p">,</span> <span class="n">synced_labels_dict</span><span class="p">)</span>
+    <span class="c1"># -------------------------------------------------------------------------</span>
+
+    <span class="c1"># Synchronize Sparse Tensors ----------------------------------------------</span>
+    <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;sptensor&#39;</span> <span class="ow">in</span> <span class="n">base</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">ignore_base_tensor</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Synchronizing base sparse tensor ...&#39;</span><span class="p">)</span>
+        <span class="n">base</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">base_mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">sync_sptensor_entries</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">base_mode_id</span><span class="p">],</span> 
+                                                    <span class="n">base_labels</span><span class="p">,</span> <span class="n">synced_labels_dict</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="s1">&#39;sptensor&#39;</span> <span class="ow">in</span> <span class="n">update</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Synchronizing update sparse tensor ...&#39;</span><span class="p">)</span>
+        <span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">update_mode_id</span><span class="p">]</span> <span class="o">=</span> \
+            <span class="n">sync_sptensor_entries</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">update_mode_id</span><span class="p">],</span> 
+                                    <span class="n">update_labels</span><span class="p">,</span> <span class="n">synced_labels_dict</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span> <span class="c1"># With sync_stream, update tensor must exist</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;No tensor_data.txt file was found in the update directory. Aborting.&#39;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="c1"># -------------------------------------------------------------------------</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Synchronizing labels ...&#39;</span><span class="p">)</span>
+    <span class="n">base</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">base_mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">synced_labels</span>
+    <span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">update_mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">synced_labels</span>
+
+    <span class="k">return</span> <span class="n">base</span><span class="p">,</span> <span class="n">update</span>
+
+<span class="k">def</span> <span class="nf">sync_factor_matrix</span><span class="p">(</span><span class="n">old_factor_matrix</span><span class="p">,</span> <span class="n">old_labels</span><span class="p">,</span> <span class="n">synced_labels_dict</span><span class="p">):</span>
+    <span class="c1"># Reorder rows of factor matrix according to new mode indices</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">rank</span> <span class="o">=</span> <span class="n">old_factor_matrix</span><span class="o">.</span><span class="n">shape</span> <span class="c1"># Get the rank as that will not change</span>
+    <span class="n">new_factor_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">synced_labels_dict</span><span class="p">),</span> <span class="n">rank</span><span class="p">))</span> <span class="c1"># Initialize new (bigger) factor matrix</span>
+    <span class="n">sync_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">synced_labels_dict</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">old_labels</span><span class="p">]</span> <span class="c1"># Get the new indices for where the original rows should now be</span>
+    <span class="n">new_factor_matrix</span><span class="p">[</span><span class="n">sync_indices</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">old_factor_matrix</span> <span class="c1"># Assign old factor matrix to new factor matrix according to new indices</span>
+
+    <span class="k">return</span> <span class="n">new_factor_matrix</span>
+
+<span class="k">def</span> <span class="nf">sync_sptensor_entries</span><span class="p">(</span><span class="n">old_entries_column</span><span class="p">,</span> <span class="n">old_labels</span><span class="p">,</span> <span class="n">synced_labels_dict</span><span class="p">):</span>
+    <span class="c1"># Replace sparse tensor coordinates with new mode indices</span>
+
+    <span class="n">new_entries_column</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">old_entries_column</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">nditer</span><span class="p">(</span><span class="n">old_entries_column</span><span class="p">):</span> <span class="c1"># nditer simply allows for fast iteration</span>
+            <span class="n">new_entries_column</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">synced_labels_dict</span><span class="p">[</span><span class="n">old_labels</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">)]])</span>
+
+    <span class="k">return</span> <span class="n">new_entries_column</span>
+
+<span class="k">def</span> <span class="nf">scrub_overlap_entries</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">overlap</span><span class="p">,</span> <span class="n">clean_mode_map</span><span class="p">,</span> <span class="n">mode_id</span><span class="p">):</span>
+    <span class="c1"># Delete rows that have labels in the stream mode that overlap with the base</span>
+    <span class="n">old_mode_map</span> <span class="o">=</span> <span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span>
+
+    <span class="n">row_idx</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">delete_idxs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">dropped_entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">label_idx</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">nditer</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">mode_id</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">old_mode_map</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">label_idx</span><span class="p">)]</span> <span class="ow">in</span> <span class="n">overlap</span><span class="p">:</span>
+            <span class="n">delete_idxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row_idx</span><span class="p">)</span>  
+
+            <span class="c1"># Collect dropped entries</span>
+            <span class="n">dropped_entry</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">mode_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]):</span>
+                <span class="n">dropped_entry</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">mode_num</span><span class="p">][</span><span class="nb">int</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][</span><span class="n">row_idx</span><span class="p">,</span> <span class="n">mode_num</span><span class="p">])]))</span>
+            <span class="n">dropped_entry</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][</span><span class="n">row_idx</span><span class="p">,</span> <span class="n">update</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]]))</span>
+            <span class="n">dropped_entry</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">row_idx</span><span class="p">))</span>
+            <span class="n">dropped_entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dropped_entry</span><span class="p">)</span>    
+        <span class="n">row_idx</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">],</span> <span class="n">delete_idxs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;  Removed </span><span class="si">{}</span><span class="s1"> tensor entries containing overlapping labels.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">delete_idxs</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">clean_mode_map</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="c1"># Re-number label indices in streaming mode now that overlapping indices are gone</span>
+        <span class="n">update_label_idx</span> <span class="o">=</span> <span class="p">{</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">label</span><span class="p">):</span> <span class="n">clean_mode_map</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">clean_mode_map</span><span class="p">}</span>
+
+        <span class="n">row_idx</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">label_idx</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">nditer</span><span class="p">(</span><span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][:,</span> <span class="n">mode_id</span><span class="p">]):</span>
+            <span class="n">update</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">][</span><span class="n">row_idx</span><span class="p">,</span> <span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">update_label_idx</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">label_idx</span><span class="p">)]</span>
+            <span class="n">row_idx</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No indices to re-label as clean mode map is empty.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">update</span><span class="p">,</span> <span class="n">dropped_entries</span>
+
+<span class="k">def</span> <span class="nf">read_tensor_decomp_files</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+    <span class="c1"># Reads in mode maps and the tensor/decomposition if either are available.</span>
+    <span class="c1"># Returns a dictionary containing a subset of the following potential keys:</span>
+    <span class="c1">#   &#39;order&#39;, &#39;mode_maps&#39;, &#39;mode_names&#39;, &#39;sptensor&#39;, &#39;factor_matrices&#39;</span>
+    <span class="c1"># Order, mode_maps and mode_names should always be available.</span>
+
+    <span class="n">tensor_decomp</span> <span class="o">=</span> <span class="p">{}</span> <span class="c1"># Initialize dictionary</span>
+
+    <span class="c1"># Get available files in directory</span>
+    <span class="n">available_files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+    <span class="n">mode_map_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;map_mode_&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">x</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.txt&#39;</span><span class="p">),</span> <span class="n">available_files</span><span class="p">))</span>
+
+    <span class="c1"># Verify that mode map files exist. </span>
+    <span class="c1"># If so, use them to deduce the order of the tensor</span>
+    <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mode_map_files</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;All directories must contain map_mode_&lt;x&gt;.txt files to synchronize: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="c1"># Read in mode maps and associated mode names</span>
+    <span class="n">mode_map_dict</span><span class="p">,</span> <span class="n">mode_name_dict</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]):</span>
+        <span class="n">map_mode_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s1">&#39;map_mode_</span><span class="si">{}</span><span class="s1">.txt&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode_id</span><span class="p">))</span>
+        <span class="n">mode_name_dict</span><span class="p">[</span><span class="n">mode_id</span><span class="p">],</span> <span class="n">mode_map_dict</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">read_labels</span><span class="p">(</span><span class="n">map_mode_file_path</span><span class="p">)</span>
+    <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mode_map_dict</span>
+    <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mode_name_dict</span>
+
+    <span class="c1"># Read in tensor data if available</span>
+    <span class="k">if</span> <span class="s1">&#39;tensor_data.txt&#39;</span> <span class="ow">in</span> <span class="n">available_files</span><span class="p">:</span>
+        <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sio</span><span class="o">.</span><span class="n">read_sptensor_entries</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s1">&#39;tensor_data.txt&#39;</span><span class="p">))[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;weights.txt&#39;</span> <span class="ow">in</span> <span class="n">available_files</span><span class="p">:</span>
+        <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;weights&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dio</span><span class="o">.</span><span class="n">read_weights</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s1">&#39;weights.txt&#39;</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;streaming.txt&#39;</span> <span class="ow">in</span> <span class="n">available_files</span><span class="p">:</span>
+        <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;streaming&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dio</span><span class="o">.</span><span class="n">read_streaming</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s1">&#39;streaming.txt&#39;</span><span class="p">))</span>
+
+    <span class="c1"># Read in factor matrices if available</span>
+    <span class="k">if</span> <span class="s1">&#39;decomp_mode_&#39;</span> <span class="ow">in</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">available_files</span><span class="p">):</span>
+        <span class="n">decomp_mode_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]):</span>
+            <span class="n">decomp_mode_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="s1">&#39;decomp_mode_</span><span class="si">{}</span><span class="s1">.txt&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">mode_id</span><span class="p">))</span>
+            <span class="n">decomp_mode_dict</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">dio</span><span class="o">.</span><span class="n">read_factor_matrix</span><span class="p">(</span><span class="n">decomp_mode_file_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">decomp_mode_dict</span>
+
+    <span class="k">return</span> <span class="n">tensor_decomp</span>
+
+<span class="k">def</span> <span class="nf">write_tensor_decomp_files</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
+    <span class="c1"># Writes the mode maps and any other available components to disk.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">directory</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
+
+    <span class="c1"># Write mode maps</span>
+    <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]):</span>
+        <span class="n">sio</span><span class="o">.</span><span class="n">write_labels</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">mode_id</span><span class="p">,</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_names&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">],</span>
+                         <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">])</span>
+
+    <span class="c1"># Write factor matrices if available</span>
+    <span class="k">if</span> <span class="s1">&#39;factor_matrices&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">]):</span>
+            <span class="n">dio</span><span class="o">.</span><span class="n">write_factor_matrix</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">mode_id</span><span class="p">,</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;factor_matrices&#39;</span><span class="p">][</span><span class="n">mode_id</span><span class="p">])</span>
+
+    <span class="c1"># Write tensor data if available</span>
+    <span class="k">if</span> <span class="s1">&#39;sptensor&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">mode_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;mode_maps&#39;</span><span class="p">][</span><span class="n">i</span><span class="p">])</span> 
+                      <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;order&#39;</span><span class="p">])]</span>
+        <span class="n">sio</span><span class="o">.</span><span class="n">write_sptensor_entries</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">mode_sizes</span><span class="p">,</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;sptensor&#39;</span><span class="p">])</span>
+    
+    <span class="c1"># Write weights if available</span>
+    <span class="k">if</span> <span class="s1">&#39;weights&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">dio</span><span class="o">.</span><span class="n">write_weights</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;weights&#39;</span><span class="p">])</span>
+
+    <span class="c1"># Write streaming if available</span>
+    <span class="k">if</span> <span class="s1">&#39;streaming&#39;</span> <span class="ow">in</span> <span class="n">tensor_decomp</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">dio</span><span class="o">.</span><span class="n">write_streaming</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">tensor_decomp</span><span class="p">[</span><span class="s1">&#39;streaming&#39;</span><span class="p">])</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

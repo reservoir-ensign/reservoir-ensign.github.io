@@ -1,0 +1,78 @@
+Installation
+============
+
+- See Section 2 of the User Guide for detailed instructions.
+
+
+- Tested platforms
+
+  - RHEL 7.6
+
+  - Ubuntu 16.04
+
+  - CentOS 7.2
+
+
+- Prerequisites
+
+  - gcc
+
+  - Anaconda3 (Python3, dask, pandas, numpy, matplotlib, pyyaml)
+       
+    - You could install Anaconda 3 for Python Tools & API from:
+      https://docs.anaconda.com/anaconda/install/linux/
+
+  - ImageMagick
+
+    **Note:** You may have to make the following change to provide permissions
+    for ImageMagick post-installation (requires superuser priviledges):
+
+    Change the line:
+    ::
+
+      <policy domain="coder" rights="none" pattern="PDF" />
+
+    in the file **/etc/ImageMagick-6/policy.xml** to:
+    ::
+
+      <policy domain="coder" rights="read|write" pattern="PDF" />
+
+
+- ENSIGN Quick Install
+
+    ::
+
+    $> unzip ENSIGN-4.3.zip
+    $> cd ENSIGN-43
+    $> ./ENSIGN_install.sh -y
+
+
+- Set proper environment variables to use ENSIGN
+
+    ::
+
+      export ENSIGN_BASE=/path/to/ENSIGN-43/ENSIGN_4.3
+      export ANACONDA_HOME=/path/to/anaconda3
+      
+      export PATH=$ENSIGN_BASE/bin:$ENSIGN_BASE/Ensign-Py3/bin:$ANACONDA_HOME/bin/:$PATH
+      export PYTHONPATH=$ENSIGN_BASE/Ensign-Py3:$PYTHONPATH
+      export LD_LIBRARY_PATH=$ENSIGN_BASE/Ensign-CAPI/lib:$LD_LIBRARY_PATH
+
+  - Alternatively, for ease of use, there is the **env.sh** file in 
+    **ENSIGN-43/**. Simply edit the *ENSIGN_BASE* and *ANACONDA_HOME* variables 
+    to contain the paths to **ENSIGN-43/ENSIGN_4.3/** and **anaconda3/** 
+    respectively.
+
+    Then to set the paths, run the following:
+    ::
+
+    $> source env.sh
+
+
+- Test the installation
+
+    ::
+
+    $> cd ENSIGN_4.3
+    $> ./ENSIGN.test_install
+

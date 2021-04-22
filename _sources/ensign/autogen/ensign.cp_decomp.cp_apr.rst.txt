@@ -1,0 +1,6 @@
+ensign.cp\_decomp.cp\_apr
+=========================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autofunction:: cp_apr

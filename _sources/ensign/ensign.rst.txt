@@ -1,0 +1,120 @@
+ENSIGN Python API
+=================
+
+:mod:`ensign.csv2tensor`
+------------------------
+
+.. automodule:: ensign.csv2tensor
+
+.. currentmodule:: ensign.csv2tensor
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.csv2tensor.csv2tensor
+    ensign.csv2tensor.df2tensor
+
+
+:mod:`ensign.cp_decomp`
+-----------------------
+
+.. automodule:: ensign.cp_decomp
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.cp_decomp.CPDecomp
+    ensign.cp_decomp.CPDecomp.compute_cpd_backtrack
+    ensign.cp_decomp.read_cp_decomp_dir
+    ensign.cp_decomp.write_cp_decomp_dir
+    ensign.cp_decomp.reconstruct_into
+    ensign.cp_decomp.get_fit_per_entry
+    ensign.cp_decomp.are_close
+    ensign.cp_decomp.cp_als
+    ensign.cp_decomp.cp_als_nn
+    ensign.cp_decomp.cp_apr
+    ensign.cp_decomp.cp_apr_pdnr
+    ensign.cp_decomp.cp_apr_pqnr
+
+
+:mod:`ensign.sptensor`
+----------------------
+
+.. automodule:: ensign.sptensor
+
+.. currentmodule:: ensign.sptensor
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.sptensor.SPTensor
+    ensign.sptensor.SPTensor.write
+    ensign.sptensor.read_sptensor
+    ensign.sptensor.write_sptensor
+
+
+:mod:`ensign.visualize`
+-----------------------
+
+.. automodule:: ensign.visualize
+
+.. currentmodule:: ensign.visualize
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.visualize.plot_component
+
+
+:mod:`ensign.comp_top_k`
+------------------------
+
+.. automodule:: ensign.comp_top_k
+
+.. currentmodule:: ensign.comp_top_k
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.comp_top_k.get_top_k
+
+
+:mod:`ensign.query_decomp`
+--------------------------
+
+.. automodule:: ensign.query_decomp
+
+.. currentmodule:: ensign.query_decomp
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.query_decomp.query_decomp
+
+
+:mod:`ensign.synchronize_labels`
+--------------------------------
+
+.. automodule:: ensign.synchronize_labels
+
+.. currentmodule:: ensign.synchronize_labels
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.synchronize_labels.synchronize_labels
+    ensign.synchronize_labels.synchronize_labels_stream
+
+:mod:`ensign.decomp_diff`
+--------------------------------
+
+.. automodule:: ensign.decomp_diff
+
+.. currentmodule:: ensign.decomp_diff
+
+.. autosummary::
+    :toctree: autogen/
+
+    ensign.decomp_diff.decomp_diff

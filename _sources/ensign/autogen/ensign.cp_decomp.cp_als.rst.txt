@@ -1,0 +1,6 @@
+ensign.cp\_decomp.cp\_als
+=========================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autofunction:: cp_als

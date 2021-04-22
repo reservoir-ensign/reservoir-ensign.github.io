@@ -1,0 +1,6 @@
+ensign.cp\_decomp.CPDecomp.compute\_cpd\_backtrack
+==================================================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. automethod:: CPDecomp.compute_cpd_backtrack

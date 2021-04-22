@@ -1,0 +1,6 @@
+ensign.sptensor.read\_sptensor
+==============================
+
+.. currentmodule:: ensign.sptensor
+
+.. autofunction:: read_sptensor

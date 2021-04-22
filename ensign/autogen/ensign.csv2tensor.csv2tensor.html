@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.csv2tensor.csv2tensor &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.csv2tensor.df2tensor" href="ensign.csv2tensor.df2tensor.html" />
+    <link rel="prev" title="ENSIGN Python API" href="../ensign.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.csv2tensor.df2tensor.html" title="ensign.csv2tensor.df2tensor"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../ensign.html" title="ENSIGN Python API"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-csv2tensor-csv2tensor">
+<h1>ensign.csv2tensor.csv2tensor<a class="headerlink" href="#ensign-csv2tensor-csv2tensor" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="ensign.csv2tensor.csv2tensor">
+<code class="sig-name descname">csv2tensor</code><span class="sig-paren">(</span><em class="sig-param">filepaths</em>, <em class="sig-param">distributed=False</em>, <em class="sig-param">columns=None</em>, <em class="sig-param">binning=None</em>, <em class="sig-param">types=None</em>, <em class="sig-param">sort=None</em>, <em class="sig-param">entries='count'</em>, <em class="sig-param">fuse_columns=None</em>, <em class="sig-param">joiner='__'</em>, <em class="sig-param">delimiter='</em>, <em class="sig-param">'</em>, <em class="sig-param">bro_log=False</em>, <em class="sig-param">header=None</em>, <em class="sig-param">validate_bro_log=True</em>, <em class="sig-param">gen_backtrack=False</em>, <em class="sig-param">gen_queries=False</em>, <em class="sig-param">drop_missing_values=False</em>, <em class="sig-param">missing_vals_limit=None</em>, <em class="sig-param">verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/csv2tensor.html#csv2tensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.csv2tensor.csv2tensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a sparse tensor from one or more CSV files or Bro/Zeek logs.</p>
+<p>The columns of the DataFrame(s) will become the modes (dimensions) of the
+tensor. It is important to carefully choose these columns as it’s
+recommended to only use 3-6 columns. This is specified with the <cite>columns</cite>
+argument.</p>
+<p>The set of indices of each mode correspond to the unique set of values in
+the corresponding column. Therefore the values of each column need to be
+discretized. This is done with the <cite>binning</cite> argument.</p>
+<p>Each binning scheme requires the associated column to be of a particular
+type. Specify the types with the <cite>types</cite> argument.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>filepaths</strong><span class="classifier">list of str</span></dt><dd><p>Path(s) to input file(s). If multiple input files are specified, other
+options such as ‘types’ and ‘binning’ will be applied the same to
+all files.</p>
+</dd>
+<dt><strong>distributed</strong><span class="classifier">bool or str</span></dt><dd><p>Whether or not to use the Dask Distributed scheduler. If True, the
+Dask scheduler address is assumed to be ‘127.0.0.1:8786’. If False, the
+local threaded scheduler is used. If str, it should contain a Dask
+scheduler address. Default: use threaded scheduler.
+The distributed scheduler is strongly recommended.</p>
+</dd>
+<dt><strong>columns</strong><span class="classifier">list of str</span></dt><dd><p>A list containing names of columns to be chosen for tensor 
+construction. Default: None</p>
+</dd>
+<dt><strong>types</strong><span class="classifier">list of str</span></dt><dd><p>The expected type of the columns list entry at the corresponding 
+position. Options are: ‘str’, ‘float64’, ‘int64’, ‘datetime’, ‘date’, 
+‘time’, ‘timestamp’, and ‘ip’. Columns typed as ‘datetime’, ‘date’, 
+‘time’ or ‘timestamp’ will be sorted automatically if <cite>sort</cite> is None. 
+Default: None</p>
+</dd>
+<dt><strong>binning</strong><span class="classifier">list of str</span></dt><dd><p>The binning technique to use for the columns list entry at the 
+corresponding position. Options are: ‘none’, ‘binsize=&lt;float&gt;’, 
+‘cyclic=&lt;int:float&gt;’, ‘log10’, ‘round=&lt;int&gt;’, 
+‘ipv6_hextets=&lt;num_hextets&gt;:[‘MSB’|’LSB’]’
+‘[&lt;ipv4_mask&gt;+&lt;ipv6mask&gt; | &lt;ipv4_mask&gt; | &lt;ipv6mask&gt;]’, 
+‘second’, ‘minute’, ‘hour’, ‘day’, ‘month’, ‘year’, ‘minute-of-hour’, 
+‘hour-of-day’, ‘day-of-week’, ‘day-of-month’, and ‘month-of-year’. 
+Default: ‘none’</p>
+</dd>
+<dt><strong>sort</strong><span class="classifier">list of str</span></dt><dd><p>List of column names to sort. Mode labels of these columns will be 
+sorted when mapped to indices. Sorting columns can increase run time.
+Default: only ‘timestamp’, ‘datetime’, ‘date’ and ‘time’ columns are 
+sorted.</p>
+</dd>
+<dt><strong>fuse_columns</strong><span class="classifier">list of list of str</span></dt><dd><p>Lists of columns to fuse into single columns. e.g. [[‘col1’, ‘col2’], 
+[‘col3’, ‘col4’]], would fuse col1 and col2 into a single column named 
+col1__col2 and col3 and col4 into a column named col3__col4.
+Default: no columns are fused.</p>
+</dd>
+<dt><strong>joiner</strong><span class="classifier">str</span></dt><dd><p>Delimiter separating the values in a fused column. Default: ‘__’</p>
+</dd>
+<dt><strong>delimiter</strong><span class="classifier">str</span></dt><dd><p>Delimiter separating the columns in the CSV file(s). Interpreted as a
+regular expression if longer than a single character. Default: ‘,’</p>
+</dd>
+<dt><strong>entries</strong><span class="classifier">str</span></dt><dd><p>Tensor entry calculation method. Legal values are ‘count’ and 
+‘boolean’ and ‘value=&lt;column_name&gt;:&lt;aggregation_method&gt;’. Valid 
+aggregation methods are ‘sum’, ‘max’, ‘min’, ‘max_abs’, ‘min_abs’, 
+‘first’, ‘last’, ‘mean’, ‘prod’, ‘idxmin’, and ‘idxmax’. Modes that 
+are used as value columns will be typed as ‘float64’. Default: ‘count’</p>
+</dd>
+<dt><strong>bro_log</strong><span class="classifier">bool</span></dt><dd><p>If True, treat input as a Bro/Zeek log.
+Default: False (treat input as a CSV)</p>
+</dd>
+<dt><strong>header</strong><span class="classifier">list of str</span></dt><dd><p>For use with files that don’t have headers. Specifies the names of the 
+columns of the input file. Must have the same number of column names as 
+there are columns in the input file. Default: None.</p>
+</dd>
+<dt><strong>validate_bro_log: bool</strong></dt><dd><p>If the input bro_log is true, this check will validate whether the 
+input is indeed a Bro/Zeek log. Simply checks for the header of the 
+file. Default is True only when bro_log is True.</p>
+</dd>
+<dt><strong>gen_backtrack</strong><span class="classifier">bool</span></dt><dd><p>If True, generate backtracking information from tensor to input files. 
+This is a map from tensor entries to source lines in the original 
+CSV file(s). Information is helpful for pulling data associated 
+with specific sets of entries. This method has known scalability 
+limitations and this option will be ignored for data over 1GB. 
+For large files use gen_queries as an alternative. Default: False.</p>
+</dd>
+<dt><strong>gen_queries</strong><span class="classifier">bool</span></dt><dd><p>If True, generate map from each bin in each mode to a set of selection 
+criteria that can be parsed to construct a query for finding original 
+datalines. Scalable alternative to gen_backtrack. Default: False.</p>
+</dd>
+<dt><strong>drop_missing_values</strong><span class="classifier">bool</span></dt><dd><p>If True, drop rows where any entry fails to be typed as a float64, 
+int64, date, time, datetime, or timestamp. Otherwise, bucket the 
+missing/corrupted values as NaN or NaT. Default: bucket missing values.</p>
+</dd>
+<dt><strong>missing_vals_limit</strong><span class="classifier">int</span></dt><dd><p>Cap the number of values that fail to be typed. After the quantity is 
+reached, csv2tensor will exit with an error. <cite>None</cite> means do not cap 
+the amount of failures. Default: do not limit.</p>
+</dd>
+<dt><strong>verbose</strong><span class="classifier">bool</span></dt><dd><p>Verbose output. Default False.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>tensor</strong><span class="classifier">ensign.sptensor.SPTensor</span></dt><dd><p>The sparse tensor produced from the CSV input file(s) and input 
+parameters.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../ensign.html"
+                        title="previous chapter">ENSIGN Python API</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.csv2tensor.df2tensor.html"
+                        title="next chapter">ensign.csv2tensor.df2tensor</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.csv2tensor.df2tensor.html" title="ensign.csv2tensor.df2tensor"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../ensign.html" title="ENSIGN Python API"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

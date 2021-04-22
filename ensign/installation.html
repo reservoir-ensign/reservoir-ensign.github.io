@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Installation &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<ul>
+<li><p>See Section 2 of the User Guide for detailed instructions.</p></li>
+<li><p>Tested platforms</p>
+<ul class="simple">
+<li><p>RHEL 7.6</p></li>
+<li><p>Ubuntu 16.04</p></li>
+<li><p>CentOS 7.2</p></li>
+</ul>
+</li>
+<li><p>Prerequisites</p>
+<ul>
+<li><p>gcc</p></li>
+<li><p>Anaconda3 (Python3, dask, pandas, numpy, matplotlib, pyyaml)</p>
+<ul class="simple">
+<li><p>You could install Anaconda 3 for Python Tools &amp; API from:
+<a class="reference external" href="https://docs.anaconda.com/anaconda/install/linux/">https://docs.anaconda.com/anaconda/install/linux/</a></p></li>
+</ul>
+</li>
+<li><p>ImageMagick</p>
+<p><strong>Note:</strong> You may have to make the following change to provide permissions
+for ImageMagick post-installation (requires superuser priviledges):</p>
+<p>Change the line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">policy</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;coder&quot;</span> <span class="n">rights</span><span class="o">=</span><span class="s2">&quot;none&quot;</span> <span class="n">pattern</span><span class="o">=</span><span class="s2">&quot;PDF&quot;</span> <span class="o">/&gt;</span>
+</pre></div>
+</div>
+<p>in the file <strong>/etc/ImageMagick-6/policy.xml</strong> to:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">policy</span> <span class="n">domain</span><span class="o">=</span><span class="s2">&quot;coder&quot;</span> <span class="n">rights</span><span class="o">=</span><span class="s2">&quot;read|write&quot;</span> <span class="n">pattern</span><span class="o">=</span><span class="s2">&quot;PDF&quot;</span> <span class="o">/&gt;</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p>ENSIGN Quick Install</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$&gt; unzip ENSIGN-4.3.zip
+$&gt; cd ENSIGN-43
+$&gt; ./ENSIGN_install.sh -y
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+<li><p>Set proper environment variables to use ENSIGN</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>export ENSIGN_BASE=/path/to/ENSIGN-43/ENSIGN_4.3
+export ANACONDA_HOME=/path/to/anaconda3
+
+export PATH=$ENSIGN_BASE/bin:$ENSIGN_BASE/Ensign-Py3/bin:$ANACONDA_HOME/bin/:$PATH
+export PYTHONPATH=$ENSIGN_BASE/Ensign-Py3:$PYTHONPATH
+export LD_LIBRARY_PATH=$ENSIGN_BASE/Ensign-CAPI/lib:$LD_LIBRARY_PATH
+</pre></div>
+</div>
+</div></blockquote>
+<ul>
+<li><p>Alternatively, for ease of use, there is the <strong>env.sh</strong> file in
+<strong>ENSIGN-43/</strong>. Simply edit the <em>ENSIGN_BASE</em> and <em>ANACONDA_HOME</em> variables
+to contain the paths to <strong>ENSIGN-43/ENSIGN_4.3/</strong> and <strong>anaconda3/</strong>
+respectively.</p>
+<p>Then to set the paths, run the following:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$&gt; source env.sh
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p>Test the installation</p>
+<blockquote>
+<div><div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$&gt; cd ENSIGN_4.3
+$&gt; ./ENSIGN.test_install
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

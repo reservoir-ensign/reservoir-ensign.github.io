@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.comp_top_k &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ensign.comp_top_k</h1><div class="highlight"><pre>
+<span></span><span class="c1"># ENSIGN rights</span>
+<span class="sd">&quot;&quot;&quot;Module for investigating the contents of a tensor decomposition by listing</span>
+<span class="sd">the highest scoring labels in a component.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">ensign.ensign_io.ensign_logging</span> <span class="k">as</span> <span class="nn">ensign_logging</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">ensign_logging</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+<div class="viewcode-block" id="get_top_k"><a class="viewcode-back" href="../../ensign/autogen/ensign.comp_top_k.get_top_k.html#ensign.comp_top_k.get_top_k">[docs]</a><span class="k">def</span> <span class="nf">get_top_k</span><span class="p">(</span><span class="n">factors</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">comp_ids</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Computes the top k labels and corresponding scores for each mode for </span>
+<span class="sd">    each component in the list.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    factors : list of ndarray</span>
+<span class="sd">        Factor matrices formatted as a list of ndarrays. Each factor matrix</span>
+<span class="sd">        should be represented as an ndarray and have shape (mode_size, rank).</span>
+<span class="sd">    labels : list of lists of str</span>
+<span class="sd">        List of label maps, each of which formatted as a list of strings.</span>
+<span class="sd">        e.g. labels[1][5] should get the 5th label of mode 1.</span>
+<span class="sd">    comp_ids : list of int</span>
+<span class="sd">        List of component ids</span>
+<span class="sd">    k : int</span>
+<span class="sd">        The number of labels and scores to return from each mode for each </span>
+<span class="sd">        component.  </span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ret : dict</span>
+<span class="sd">        Nested dictionaries containing sorted lists of tuples. Keys are</span>
+<span class="sd">        component ID and mode ID.</span>
+<span class="sd">        Each tuple contains a label, its index in the mode, and its score</span>
+<span class="sd">        in the factor matrix. (label, idx, score)</span>
+<span class="sd">        e.g. Retrieve a tuple of the highest scoring label</span>
+<span class="sd">        from mode 2 of component 10: ret[10][2][0]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">k</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;The value passed to -k should be a positive integer.&#39;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">factors</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;The number of factor matrices (decomp_mode_&lt;x&gt;.txt files) does not equal the number of label maps (map_mode_&lt;x&gt;.txt files).&#39;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    
+    <span class="n">order</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">factors</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;No factor matrices (decomp_mode_&lt;x&gt;.txt files) or label maps (map_mode_&lt;x&gt;.txt files) were passed.&#39;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">rank</span> <span class="o">=</span> <span class="n">factors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># Validate input component ids</span>
+    <span class="n">comps</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">comp_id</span> <span class="ow">in</span> <span class="n">comp_ids</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">comp_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">rank</span><span class="p">)):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Rank of the decomposition is: </span><span class="si">{}</span><span class="s2">, Component </span><span class="si">{}</span><span class="s2"> does not exist.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">comp_id</span><span class="p">)</span>
+            <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">comps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">comp_id</span><span class="p">)</span>
+    <span class="n">comp_ids</span> <span class="o">=</span> <span class="n">comps</span>
+
+    <span class="n">top_k</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">comp_id</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">comp_ids</span><span class="p">):</span> <span class="c1"># Check all modes as per definition</span>
+        <span class="n">top_k</span><span class="p">[</span><span class="n">comp_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">mode_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">order</span><span class="p">):</span> <span class="c1"># Check user-selected components</span>
+            <span class="n">component</span> <span class="o">=</span> <span class="n">factors</span><span class="p">[</span><span class="n">mode_id</span><span class="p">][:,</span><span class="n">comp_id</span><span class="p">]</span> <span class="c1"># Get the specific component</span>
+            <span class="n">mode_labels</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">mode_id</span><span class="p">]</span>
+
+            <span class="c1"># Find indices of top values in this component</span>
+            <span class="n">idxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">component</span><span class="p">))</span> <span class="c1"># Sort the component (ascending) and get the associated indices</span>
+            <span class="n">top_idxs</span> <span class="o">=</span> <span class="n">idxs</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][:</span><span class="n">k</span><span class="p">]</span> <span class="c1"># [::-1] Reverses the sort and [:k] grabs the top k</span>
+
+            <span class="c1"># Get associated labels and scores from the indices</span>
+            <span class="n">top_labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">mode_labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">top_idxs</span><span class="p">]</span> <span class="c1"># Get the labels associated with top indices</span>
+            <span class="n">top_scores</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">component</span><span class="p">[</span><span class="n">top_idxs</span><span class="p">]))</span> <span class="c1"># Get top k scores and filter out zeros</span>
+
+            <span class="n">top_k</span><span class="p">[</span><span class="n">comp_id</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">top_idx</span> <span class="ow">in</span> <span class="n">top_idxs</span><span class="p">:</span>
+                <span class="n">score</span> <span class="o">=</span> <span class="n">component</span><span class="p">[</span><span class="n">top_idx</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">score</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">top_k</span><span class="p">[</span><span class="n">comp_id</span><span class="p">][</span><span class="n">mode_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">mode_labels</span><span class="p">[</span><span class="n">top_idx</span><span class="p">],</span> <span class="n">top_idx</span><span class="p">,</span> <span class="n">score</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">top_k</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

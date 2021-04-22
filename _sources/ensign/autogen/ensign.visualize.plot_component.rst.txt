@@ -1,0 +1,6 @@
+ensign.visualize.plot\_component
+================================
+
+.. currentmodule:: ensign.visualize
+
+.. autofunction:: plot_component

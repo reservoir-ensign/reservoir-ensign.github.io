@@ -1,0 +1,17 @@
+Prerequisites
+=============
+
+- Ubuntu 16.04 or CentOS 7.2
+
+- ENSIGN 4.3 and all prerequisites
+
+- Set proper environment variables to use Ensign-Py3
+
+    ::
+
+      export ENSIGN_BASE=/path/to/ENSIGN_4.3
+      export ANACONDA_HOME=/path/to/anaconda3
+      
+      export PATH=$ENSIGN_BASE/bin:$ENSIGN_BASE/Ensign-Py3/bin:$ANACONDA_HOME/bin/:$PATH
+      export PYTHONPATH=$ENSIGN_BASE/Ensign-Py3:$PYTHONPATH
+      export LD_LIBRARY_PATH=$ENSIGN_BASE/Ensign-CAPI/lib:$LD_LIBRARY_PATH

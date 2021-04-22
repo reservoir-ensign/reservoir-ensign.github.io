@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.sptensor.read_sptensor &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.sptensor.write_sptensor" href="ensign.sptensor.write_sptensor.html" />
+    <link rel="prev" title="ensign.sptensor.SPTensor.write" href="ensign.sptensor.SPTensor.write.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.sptensor.write_sptensor.html" title="ensign.sptensor.write_sptensor"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ensign.sptensor.SPTensor.write.html" title="ensign.sptensor.SPTensor.write"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-sptensor-read-sptensor">
+<h1>ensign.sptensor.read_sptensor<a class="headerlink" href="#ensign-sptensor-read-sptensor" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="ensign.sptensor.read_sptensor">
+<code class="sig-name descname">read_sptensor</code><span class="sig-paren">(</span><em class="sig-param">directory</em>, <em class="sig-param">tensor_file='tensor_data.txt'</em>, <em class="sig-param">read_map_modes=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/sptensor.html#read_sptensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.sptensor.read_sptensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a sparse tensor file from the filesystem.</p>
+<p>Looks for mode maps formatted as map_mode_&lt;i&gt;.txt and reads
+the metadata into <code class="docutils literal notranslate"><span class="pre">sptensor</span></code> if found.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>directory</strong><span class="classifier">str</span></dt><dd><p>Name of directory containing tensor data and mode maps.</p>
+</dd>
+<dt><strong>tensor_file</strong><span class="classifier">str</span></dt><dd><p>Filename of sparse tensor file. Default: ‘tensor_data.txt’</p>
+</dd>
+<dt><strong>read_map_modes</strong><span class="classifier">str</span></dt><dd><p>If True, read_sptensor will look for and read from existing mode 
+map files to determine mode names and labels.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>sptensor</strong><span class="classifier">SPTensor</span></dt><dd><p>The sparse tensor in <code class="docutils literal notranslate"><span class="pre">directory</span></code></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><dl class="simple">
+<dt>Exception</dt><dd><p>If the sparse tensor cannot be read or is not well formed.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="ensign.sptensor.SPTensor.html#ensign.sptensor.SPTensor" title="ensign.sptensor.SPTensor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.sptensor.SPTensor</span></code></a></dt><dd><p>Sparse tensor class</p>
+</dd>
+</dl>
+</div>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.sptensor.SPTensor.write.html"
+                        title="previous chapter">ensign.sptensor.SPTensor.write</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.sptensor.write_sptensor.html"
+                        title="next chapter">ensign.sptensor.write_sptensor</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.sptensor.write_sptensor.html" title="ensign.sptensor.write_sptensor"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ensign.sptensor.SPTensor.write.html" title="ensign.sptensor.SPTensor.write"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

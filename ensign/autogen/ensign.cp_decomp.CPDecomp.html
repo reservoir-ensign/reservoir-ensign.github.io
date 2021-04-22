@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.cp_decomp.CPDecomp &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack" href="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack.html" />
+    <link rel="prev" title="ensign.csv2tensor.df2tensor" href="ensign.csv2tensor.df2tensor.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack.html" title="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ensign.csv2tensor.df2tensor.html" title="ensign.csv2tensor.df2tensor"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-cp-decomp-cpdecomp">
+<h1>ensign.cp_decomp.CPDecomp<a class="headerlink" href="#ensign-cp-decomp-cpdecomp" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ensign.cp_decomp.CPDecomp">
+<em class="property">class </em><code class="sig-name descname">CPDecomp</code><a class="reference internal" href="../../_modules/ensign/cp_decomp.html#CPDecomp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.cp_decomp.CPDecomp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents the results of a CP decomposition.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="ensign.sptensor.SPTensor.html#ensign.sptensor.SPTensor" title="ensign.sptensor.SPTensor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.sptensor.SPTensor</span></code></a></dt><dd><p>Sparse tensor class</p>
+</dd>
+</dl>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>rank</strong><span class="classifier">int</span></dt><dd><p>Rank of decomposition.</p>
+</dd>
+<dt><strong>order</strong><span class="classifier">int</span></dt><dd><p>Order of decomposed tensor.</p>
+</dd>
+<dt><strong>sptensor</strong><span class="classifier">SPTensor</span></dt><dd><p>SPTensor that was decomposed.</p>
+</dd>
+<dt><strong>weights</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>1D array of length <code class="docutils literal notranslate"><span class="pre">rank</span></code> containing weights for each component of 
+the decomposition.</p>
+</dd>
+<dt><strong>factors</strong><span class="classifier">list of numpy.ndarray</span></dt><dd><p>List of 2D factor matrices accessed by <code class="docutils literal notranslate"><span class="pre">mode_id</span></code>. Each factor matrix
+has <code class="docutils literal notranslate"><span class="pre">shape</span> <span class="pre">=</span> <span class="pre">(mode_size,</span> <span class="pre">rank)</span></code> and <code class="docutils literal notranslate"><span class="pre">dtype</span> <span class="pre">=</span> <span class="pre">&quot;float64&quot;</span></code>. All values
+in a factor matrix lie inside the closed interval <code class="docutils literal notranslate"><span class="pre">[-1,</span> <span class="pre">1]</span></code>. Each 
+column of a factor matrix represents a single component.</p>
+</dd>
+<dt><strong>factors_init</strong><span class="classifier">list of numpy.ndarray</span></dt><dd><p>List of 2D factor matrices as initialized for the decomposition. Only
+saved if requested by the decomposition call.</p>
+</dd>
+<dt><strong>labels</strong><span class="classifier">list of list of str, optional</span></dt><dd><p>An optional list of per-mode index labels accessed by <code class="docutils literal notranslate"><span class="pre">mode_id</span></code>. Each
+list of labels corresponds to the labels for each index of the mode.
+Suppose we have a mode with <code class="docutils literal notranslate"><span class="pre">mode_id</span> <span class="pre">=</span> <span class="pre">3</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;Yes&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;No&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;Maybe&quot;</span></code> mapped to indices 0-2. For this mode, <code class="docutils literal notranslate"><span class="pre">labels[3]</span></code> is
+equal to <code class="docutils literal notranslate"><span class="pre">[&quot;Yes&quot;,</span> <span class="pre">&quot;No&quot;,</span> <span class="pre">&quot;Maybe&quot;]</span></code>. Decompositions are not required to
+have labels.</p>
+</dd>
+<dt><strong>mode_names</strong><span class="classifier">list of str, optional</span></dt><dd><p>Each mode’s name accessed by <code class="docutils literal notranslate"><span class="pre">mode_id</span></code>. Decompositions are not
+required to have mode names.</p>
+</dd>
+<dt><strong>mode_sizes</strong><span class="classifier">list of int</span></dt><dd><p>The number of indices in each mode accessed by <code class="docutils literal notranslate"><span class="pre">mode_id</span></code>.</p>
+</dd>
+<dt><strong>streaming_dataless_fit</strong><span class="classifier">ndarray</span></dt><dd><p>Used by decomposition algorithms in a streaming setting to determine
+final fit.</p>
+</dd>
+<dt><strong>metrics</strong><span class="classifier">dict</span></dt><dd><p>Dictionary with keys: [time, fit, cosine_sim, norm_scaling, cp_total_iter]
+representing the time taken to run the decomposition, the final fit of
+the decomposition, the cosine similarity of the decomposition to the
+original tensor, the scale factor used to normalize the decompositions,
+and the number of optimization steps used to reach the final 
+decomposition values, respectively.</p>
+</dd>
+<dt><strong>cpd_backtrack</strong><span class="classifier">list of lists of int</span></dt><dd><p>One entry per component. Each list contains tensor entries that 
+contributed to the corresponding component. If CPDecomp object has two 
+components, and the first one tracks to tensor entries 0 and 2 and the 
+second tracks to tensor entries 1 and 3, then the backtrack will be 
+[[0,2], [1,3]]. Only exists if requested in the decomposition call.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack.html#ensign.cp_decomp.CPDecomp.compute_cpd_backtrack" title="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_cpd_backtrack</span></code></a>(self[, out_dir])</p></td>
+<td><p>Computes CP Decomposition backtracking information.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ensign.cp_decomp.CPDecomp.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/cp_decomp.html#CPDecomp.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.cp_decomp.CPDecomp.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ensign.cp_decomp.CPDecomp.__init__" title="ensign.cp_decomp.CPDecomp.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self)</p></td>
+<td><p>Initialize self.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack.html#ensign.cp_decomp.CPDecomp.compute_cpd_backtrack" title="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_cpd_backtrack</span></code></a>(self[, out_dir])</p></td>
+<td><p>Computes CP Decomposition backtracking information.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.csv2tensor.df2tensor.html"
+                        title="previous chapter">ensign.csv2tensor.df2tensor</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack.html"
+                        title="next chapter">ensign.cp_decomp.CPDecomp.compute_cpd_backtrack</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack.html" title="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ensign.csv2tensor.df2tensor.html" title="ensign.csv2tensor.df2tensor"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

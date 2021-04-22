@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.sptensor.SPTensor &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.sptensor.SPTensor.write" href="ensign.sptensor.SPTensor.write.html" />
+    <link rel="prev" title="ensign.cp_decomp.cp_apr_pqnr" href="ensign.cp_decomp.cp_apr_pqnr.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.sptensor.SPTensor.write.html" title="ensign.sptensor.SPTensor.write"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.cp_apr_pqnr.html" title="ensign.cp_decomp.cp_apr_pqnr"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-sptensor-sptensor">
+<h1>ensign.sptensor.SPTensor<a class="headerlink" href="#ensign-sptensor-sptensor" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ensign.sptensor.SPTensor">
+<em class="property">class </em><code class="sig-name descname">SPTensor</code><span class="sig-paren">(</span><em class="sig-param">order=0</em>, <em class="sig-param">nnz=0</em>, <em class="sig-param">mode_sizes=None</em>, <em class="sig-param">entries=None</em>, <em class="sig-param">mode_names=None</em>, <em class="sig-param">labels=None</em>, <em class="sig-param">spt_backtrack=None</em>, <em class="sig-param">queries=None</em>, <em class="sig-param">directory=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/sptensor.html#SPTensor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.sptensor.SPTensor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents a sparse tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Attributes</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>order</strong><span class="classifier">int</span></dt><dd><p>Order of sparse tensor.</p>
+</dd>
+<dt><strong>nnz</strong><span class="classifier">int</span></dt><dd><p>Number of nonzero tensor entries.</p>
+</dd>
+<dt><strong>mode_sizes</strong><span class="classifier">list of int</span></dt><dd><p>The number of indices in each mode accessed by <code class="docutils literal notranslate"><span class="pre">mode_id</span></code>.</p>
+</dd>
+<dt><strong>mode_names</strong><span class="classifier">list of str</span></dt><dd><p>The name of each mode indexed by <code class="docutils literal notranslate"><span class="pre">mode_id</span></code>.</p>
+</dd>
+<dt><strong>entries</strong><span class="classifier">Pandas dataframe</span></dt><dd><p>2D dataframe of tensor entries. This dataframe has <code class="docutils literal notranslate"><span class="pre">order</span> <span class="pre">+</span> <span class="pre">1</span></code> columns 
+and <code class="docutils literal notranslate"><span class="pre">nnz</span></code> rows. The first <code class="docutils literal notranslate"><span class="pre">order</span></code> columns represent 64-bit <code class="docutils literal notranslate"><span class="pre">int</span></code> 
+tensor indices. The final column represents a <code class="docutils literal notranslate"><span class="pre">float64</span></code> nonzero tensor 
+entry corresponding to the tensor indices in its row.</p>
+</dd>
+<dt><strong>labels</strong><span class="classifier">list of list of str, optional</span></dt><dd><p>An optional list of per-mode index labels accessed by <code class="docutils literal notranslate"><span class="pre">mode_id</span></code>. Each
+list of labels corresponds to the labels for each index of the mode.
+Suppose we have a mode with <code class="docutils literal notranslate"><span class="pre">mode_id</span> <span class="pre">=</span> <span class="pre">3</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;Yes&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;No&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;Maybe&quot;</span></code> mapped to indices 0-2. For this mode, <code class="docutils literal notranslate"><span class="pre">labels[3]</span></code> is
+equal to <code class="docutils literal notranslate"><span class="pre">[&quot;Yes&quot;,</span> <span class="pre">&quot;No&quot;,</span> <span class="pre">&quot;Maybe&quot;]</span></code>. SPTensors are not required to
+have labels.</p>
+</dd>
+<dt><strong>spt_backtrack</strong><span class="classifier">list of lists of tuples</span></dt><dd><p>An optional list with as many elements as non-zero tensor entries. Each
+element is a list containing tuples that indicate all file-line 
+pairs in the CSV file that contributed to that entry. For example, 
+given a tensor with three entries such that the first tracks to CSV 0,
+line 15 and CSV 1, line 7, the second tracks to CSV 0, line 45, and the 
+third tracks to CSV 1, line 23, the list would be: 
+[[(0,15), (1,7)], [(0,45)], [(1,23)]]</p>
+</dd>
+<dt><strong>queries</strong><span class="classifier">list of list of strings</span></dt><dd><p>An optional list with as many elements as number of modes. Each of these
+lists has as many entries as non-zero tensor entries. Each entry is a
+string describing selection criteria for the bin corresponding to the
+given entry and mode. For example, in a tensor with float64, int64, and 
+ip modes binned by round=1, log10, and ipsubnet=255.0.0.0, respectively, 
+the list could be: [[“c1 &gt;= 0.1 AND c1 &lt; 0.2”, …], [“c2 &gt;=10 AND c2 &lt; 100”, …], 
+[“c3 &amp; 255.0.0.0 == 10.0.0.0”, …]]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="ensign.sptensor.SPTensor.write.html#ensign.sptensor.SPTensor.write" title="ensign.sptensor.SPTensor.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write</span></code></a>(self, outdir)</p></td>
+<td><p>Writes a text representation of the sparse tensor to the given  directory.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="ensign.sptensor.SPTensor.__init__">
+<code class="sig-name descname">__init__</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">order=0</em>, <em class="sig-param">nnz=0</em>, <em class="sig-param">mode_sizes=None</em>, <em class="sig-param">entries=None</em>, <em class="sig-param">mode_names=None</em>, <em class="sig-param">labels=None</em>, <em class="sig-param">spt_backtrack=None</em>, <em class="sig-param">queries=None</em>, <em class="sig-param">directory=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/sptensor.html#SPTensor.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.sptensor.SPTensor.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize self.  See help(type(self)) for accurate signature.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#ensign.sptensor.SPTensor.__init__" title="ensign.sptensor.SPTensor.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(self[, order, nnz, mode_sizes, …])</p></td>
+<td><p>Initialize self.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="ensign.sptensor.SPTensor.write.html#ensign.sptensor.SPTensor.write" title="ensign.sptensor.SPTensor.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write</span></code></a>(self, outdir)</p></td>
+<td><p>Writes a text representation of the sparse tensor to the given  directory.</p></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.cp_decomp.cp_apr_pqnr.html"
+                        title="previous chapter">ensign.cp_decomp.cp_apr_pqnr</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.sptensor.SPTensor.write.html"
+                        title="next chapter">ensign.sptensor.SPTensor.write</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.sptensor.SPTensor.write.html" title="ensign.sptensor.SPTensor.write"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.cp_apr_pqnr.html" title="ensign.cp_decomp.cp_apr_pqnr"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

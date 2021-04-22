@@ -1,0 +1,202 @@
+Data Ingest & Preparation
+=========================
+
+Introduction to Sparse Tensors
+------------------------------
+
+ENSIGN primarily works with the sparse tensor data structure. ENSIGN uses 
+tensors to represent datasets stored conventionally as tables (matrices 
+a.k.a. order-2 tensors).
+
+A single record of data is stored as a row in a table and as a single entry in 
+a tensor. To understand this link, see the following example.
+
+Consider a table where each row represents a network flow.
+
++-------------------+---------------+---------+--------------------------+
+|src_ip             |dst_ip         |dst_port |timestamp                 |
++===================+===============+=========+==========================+
+|192.168.50.254     |224.0.0.5      |0        |2018-11-03 09:18:16.964447|
++-------------------+---------------+---------+--------------------------+
+|192.168.50.253     |224.0.0.5      |0        |2018-11-03 09:18:18.506537|
++-------------------+---------------+---------+--------------------------+
+|192.168.50.6       |172.217.10.98  |443      |2018-11-03 09:18:18.610576|
++-------------------+---------------+---------+--------------------------+
+|192.168.50.6       |172.217.7.2    |443      |2018-11-03 09:18:18.610579|
++-------------------+---------------+---------+--------------------------+
+|192.168.50.6       |172.217.10.98  |443      |2018-11-03 09:18:18.610581|
++-------------------+---------------+---------+--------------------------+
+
+Interpreted as a tensor, the table would have two modes, the rows 
+[1, 2, 3, 4, 5], and the columns [src_ip, dst_ip, dst_port, timestamp].
+To retrieve a particular value from the table, you could index it like this:
+table[3][dst_ip] = 172.217.7.2
+
+However, to take advantage of tensor decompositions, it is necessary to build a 
+tensor that has more than 2 modes. 
+
+The proper tensor that represents this table would have four modes, one for 
+each column. The modes would look like this:
+
+src_ip: [192.168.50.254, 192.168.50.253, 192.168.50.6]
+
+dst_ip: [224.0.0.5, 172.217.10.98, 172.217.7.2]
+
+dst_port: [0, 443]
+
+timestamp: [2018-11-03 09:18:16.964447, 2018-11-03 09:18:18.506537, 
+2018-11-03 09:18:18.610576, 2018-11-03 09:18:18.610579, 2018-11-03 09:18:18.610581]
+
+The values of this tensor simply indicate if the corresponding row existed 
+in the original table or not. 
+
+For example, the value of the tensor at the indices: 
+[192.168.50.254, 224.0.0.5, 0, 2018-11-03 09:18:16.964447] would be one, 
+because that set of values exists as the first row of the original table.
+
+However the value of the tensor at the indices:
+[192.168.50.254, 224.0.0.5, 443, 2018-11-03 09:18:16.964447] would be zero,
+because that set of values does not exist as a row in the original table.
+
+The problem with storing tensors is that the number of possible entries in the 
+tensor grows very large. In this example the number of entries in the tensor 
+is the product of its mode sizes: 3 * 3 * 2 * 5 = 90. Compare that with the 
+table which has only 20 entries (4 columns * 5 rows). 
+
+Fortunately, since there are only 5 unique rows in the table, there are only 5
+nonzero entries in the tensor. So the tensor can be stored in a sparse format in
+which only non-zero entries are recorded
+
+Now the values of a tensor do not have to simply be a Boolean indicating whether 
+or not the corresponding row exists or not. They could be the number of 
+duplicate rows in a table or the values of a potential fifth column.
+
+Duplicate rows become much more prevalent because the data has to be 
+discretized. Each mode in a tensor can only have a finite number of indices.
+This process of discretization is called 'binning'.
+
+Binning the timestamp column of the original table by the second gives the 
+following table:
+
++-------------------+---------------+---------+-------------------+
+|src_ip             |dst_ip         |dst_port |timestamp          |
++===================+===============+=========+===================+
+|192.168.50.254     |224.0.0.5      |0        |2018-11-03 09:18:16|
++-------------------+---------------+---------+-------------------+
+|192.168.50.253     |224.0.0.5      |0        |2018-11-03 09:18:18|
++-------------------+---------------+---------+-------------------+
+|192.168.50.6       |172.217.10.98  |443      |2018-11-03 09:18:18|
++-------------------+---------------+---------+-------------------+
+|192.168.50.6       |172.217.7.2    |443      |2018-11-03 09:18:18|
++-------------------+---------------+---------+-------------------+
+|192.168.50.6       |172.217.10.98  |443      |2018-11-03 09:18:18|
++-------------------+---------------+---------+-------------------+
+
+Note that the third and fifth rows are duplicates. Therefore tensor[192.168.50.6][172.217.10.98][443][2018-11-03 09:18:18] = 2.
+
+The next section describes ENSIGN's data ingest tool to perform the process of 
+converting data tables to sparse tensors: csv2tensor.
+
+
+csv2tensor
+----------
+
+csv2tensor reads one or more CSVs or Bro/Zeek logs from disk and returns a 
+sparse tensor as an in-memory data structure.
+
+The parameters that most influence the tensor construction process are: 
+*columns*, *binning*, and *types*. 
+
+The *columns* argument specifies which columns of the original data will be 
+used as the modes of the tensor. The recommended number of columns is 3-6. 
+This can be thought of as a form of feature selection.
+
+The *binning* argument determines how each column will be discretized. Different 
+methods can accentuate different patterns in the data. For example, binning by 
+the day of the week could highlight the differences between weekday and weekend 
+behavior. Analogously, binning is like feature engineering. The available 
+binning methods are described below. 
+
+The *types* argument specifies the type of each argument. The binning methods 
+can only operate on specific types. Additionally sorting the modes depends on 
+each respective type, if the *sort* argument is specified. The supported column 
+types are detailed below.
+
+Sorting and column fusion (*sort* and *fuse_columns*) should also be considered 
+when building a tensor. The *sort* argument specifies which modes should be 
+sorted. This makes visualizations much more interpretable. Column fusion allows 
+columns to be combined. For example, latitude and longitude columns could be 
+combined to form a mode respresenting location. Binning is performed before 
+fusion so latitude and longitude could be rounded to a certain number of 
+decimal places to achieve a specific granularity in location.
+
+The tool can leverage Dask's distributed scheduler to parallelize and 
+distribute computation. To run the scheduler, navigate to:
+**$ENSIGN_BASE/Ensign-Py3/ensign/ensign_dask**.
+
+::
+
+    ./start_dask.sh [num_cores]
+
+Information on the rest of the parameters can be found in the API reference.
+
+**Column Types**
+
+*str*
+    Strings. Default type. 
+*float64*
+    Floating-point values.
+*int64*
+    Integer values.
+*datetime*
+    Datetimes formatted as strings (e.g. ‘2020-02-29 10:52:00’). Datetime 
+    formats are automatically inferred and parsed. 
+*date*
+    Dates formatted as strings (e.g. ‘2020-02-29’). Date formats are 
+    automatically inferred and parsed.
+*time*
+    Times formatted as strings (e.g. ‘10:52:00’). Time formats are 
+    automatically inferred and parsed.
+*timestamp*
+    Datetimes formatted as Unix timestamps. Interpreted as UTC time.
+*ip*
+    IPv4/IPv6 addresses. Does not support IP subnets.
+    e.g. 127.0.0.1 is supported, 127.0.0.1/16 is not supported.
+
+**Binning Methods** *method-name[=<method-parameter-type>]*
+
+*none*
+    No binning. Default. 
+*binsize=<float>*
+    The binsize specifies the range of values that will be put in the same 
+    bin. e.g. a binsize of 3 will put the values in the range [0,3) into 
+    the first bin, values in the range [3,6) into the second, and so on. 
+    Requires the associated column to be of type *float64* or *int64*. The 
+    output after binning is stored as float.
+*cyclic=<int:float>*
+    Similar to binsize binning but controls the total number of bins with 
+    cycling. The two parameters are the number of bins and binsize. 
+    E.g. the values: [0, 1, 2, 3, 4, 5] cyclically binned with the number 
+    of bins as 2 and the binsize as 2 will map the values to: 
+    [0, 0, 1, 1, 0, 0]. Requires the associated column to be of type *float64* 
+    or *int64*. The output after binning is stored as a float.
+*log10*
+    Takes the log10 of entries and casts to an int. Negative values are 
+    taken as the negative of the log10 of their absolute value. Zero is 
+    mapped to zero. e.g. the values: [-100, 0, 100] are mapped to: 
+    [-2, 0, 2]. Requires the associated column to be of type *float64* or 
+    *int64*. The output after binning is stored as a float.
+*round=<int>*
+    Values are rounded to the integer precision specified. Requires the 
+    associated column to be of type *float64*. The output type after binning is 
+    stored as a float.
+*ipsubnet=<ipv4_mask>+<ipv6_mask>*
+    IPs are masked with the provided masks. Requires the associated column to 
+    be of type ip. The output after binning is stored as string.
+*ipv6_hextets=<num_hextets>:[‘MSB’|’LSB’]*
+    Mask all but num_hextets continuous hextets, keeping the most or least 
+    significant.
+*[second|minute|hour|day|month|year|minute-of-hour|hour-of-day|day-of-week|day-of-month|month-of-year]*
+    Bin datetime/date/time/timestamp values by various time-periods. Requires 
+    the associated column to be of type *datetime*, *date*, *time*, or 
+    *timestamp*. The output after binning is stored as formatted strings.

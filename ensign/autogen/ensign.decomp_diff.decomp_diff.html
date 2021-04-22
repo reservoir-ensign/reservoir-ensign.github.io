@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.decomp_diff.decomp_diff &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="ensign.synchronize_labels.synchronize_labels_stream" href="ensign.synchronize_labels.synchronize_labels_stream.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.synchronize_labels.synchronize_labels_stream.html" title="ensign.synchronize_labels.synchronize_labels_stream"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-decomp-diff-decomp-diff">
+<h1>ensign.decomp_diff.decomp_diff<a class="headerlink" href="#ensign-decomp-diff-decomp-diff" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="ensign.decomp_diff.decomp_diff">
+<code class="sig-name descname">decomp_diff</code><span class="sig-paren">(</span><em class="sig-param">decomps</em>, <em class="sig-param">analyses=None</em>, <em class="sig-param">modes=None</em>, <em class="sig-param">components=None</em>, <em class="sig-param">threshold=0.6</em>, <em class="sig-param">ignore_weights=False</em>, <em class="sig-param">metric='cosine'</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/decomp_diff.html#decomp_diff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.decomp_diff.decomp_diff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine differences(similarities) between decompositions.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>decomps</strong><span class="classifier">[ensign.CPDecomp]</span></dt><dd><p>A list of CPDecomp objects, one for each decomposition to be compared.</p>
+</dd>
+<dt><strong>analyses</strong><span class="classifier">[string]</span></dt><dd><p>A list of analysis types. One or more of: ‘number’, ‘mapping’, ‘similarity’</p>
+</dd>
+<dt><strong>modes</strong><span class="classifier">[int]</span></dt><dd><p>A list of mode identifiers to be used in the comparison. Default: all modes are compared.</p>
+</dd>
+<dt><strong>components</strong><span class="classifier">[[int]]</span></dt><dd><p>One per decomposition, a list of component identifiers to be used in comparison. 
+Default: all components are compared for every decomposition.</p>
+</dd>
+<dt><strong>threshold</strong><span class="classifier">float</span></dt><dd><p>The threshold value that determines similarity when determining similar components</p>
+</dd>
+<dt><strong>ignore_weights</strong><span class="classifier">bool</span></dt><dd><p>Either ignore (True) or use (False) decomposition weights when comparing decompositions. Default: False</p>
+</dd>
+<dt><strong>metric</strong><span class="classifier">string</span></dt><dd><p>The name of metric to be used in comparisons. Can be either a metric from scipy.spatial.distance, or a custom
+metric defined in ensign.distance.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl>
+<dt><strong>result</strong><span class="classifier">dict</span></dt><dd><dl>
+<dt>The key to the dictionary is the analysis type, the value is the result of that analysis.</dt><dd><p>‘number’ : float - The result of comparing each decomposition
+‘mapping’ : dict - For each component in decomp[0] show the most similar component(s) in “</p>
+<blockquote>
+<div><p>“decomp[1] within the given threshold. A unique component in decomp[0] will ”
+“map to an empty list. Also, map components from decomp[1] with no similar ”
+“component in decomp[0], within the threshold.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>‘similarity’<span class="classifier">numpy.ndarray - The similarity matrix showing comparision between all specified</span></dt><dd><p>components of decomp[0] and all specified components of decomp[1]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.synchronize_labels.synchronize_labels_stream.html"
+                        title="previous chapter">ensign.synchronize_labels.synchronize_labels_stream</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.synchronize_labels.synchronize_labels_stream.html" title="ensign.synchronize_labels.synchronize_labels_stream"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,138 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.cp_decomp.get_fit_per_entry &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.cp_decomp.are_close" href="ensign.cp_decomp.are_close.html" />
+    <link rel="prev" title="ensign.cp_decomp.reconstruct_into" href="ensign.cp_decomp.reconstruct_into.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.are_close.html" title="ensign.cp_decomp.are_close"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.reconstruct_into.html" title="ensign.cp_decomp.reconstruct_into"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-cp-decomp-get-fit-per-entry">
+<h1>ensign.cp_decomp.get_fit_per_entry<a class="headerlink" href="#ensign-cp-decomp-get-fit-per-entry" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="ensign.cp_decomp.get_fit_per_entry">
+<code class="sig-name descname">get_fit_per_entry</code><span class="sig-paren">(</span><em class="sig-param">decomp</em>, <em class="sig-param">tensor</em>, <em class="sig-param">top_k=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/cp_decomp.html#get_fit_per_entry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.cp_decomp.get_fit_per_entry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates fit for each entry of a reconstructed tensor present in the original tensor.</p>
+<p>This function evaluates how well each entry of the tensor reconstructed 
+from <code class="docutils literal notranslate"><span class="pre">decomp</span></code> matches the entry at the same index in <code class="docutils literal notranslate"><span class="pre">tensor</span></code> This 
+evaluation is calculated as fit, a floating point number on the interval 
+(-infinity, 1.0]. A fit of 1.0 is an exact match between the reconstructed 
+and original entry. Output is sorted fy fit (ascending).</p>
+<p>Lower fit values indicate a reconstructed entry is different than the original 
+entry. Low fit values may be indicative of anomalous data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>decomp</strong><span class="classifier">CPDecomp</span></dt><dd><p>Decompostion used to calculate per-element fit. A sparse tensor is 
+reconstructed from <code class="docutils literal notranslate"><span class="pre">decomp</span></code> using sum-of-outer-products and the 
+results are compared to <code class="docutils literal notranslate"><span class="pre">tensor</span></code>.</p>
+</dd>
+<dt><strong>tensor</strong><span class="classifier">SPTensor</span></dt><dd><p>The sparse tensor that is the basis for comparison.</p>
+</dd>
+<dt><strong>top_k</strong><span class="classifier">int, optional</span></dt><dd><p>The number of elements to return. If <code class="docutils literal notranslate"><span class="pre">top_k</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), 
+fit values for all entries are returned. If <code class="docutils literal notranslate"><span class="pre">top_k</span></code> is positive, the 
+<code class="docutils literal notranslate"><span class="pre">top_k</span></code> lowest fit elements are returned. If <code class="docutils literal notranslate"><span class="pre">top_k</span></code> is negative the 
+<code class="docutils literal notranslate"><span class="pre">abs(top_k)</span></code> highest fit elements are returned. If <code class="docutils literal notranslate"><span class="pre">top_k</span></code> is zero
+an empty <code class="docutils literal notranslate"><span class="pre">ndarray</span></code> is returned.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>fit_vals</strong><span class="classifier">numpy.ndarray</span></dt><dd><p>A <code class="docutils literal notranslate"><span class="pre">numpy.ndarray</span></code> of the same shape and format as <code class="docutils literal notranslate"><span class="pre">tensor.entries</span></code>. The 
+first <code class="docutils literal notranslate"><span class="pre">tensor.order</span></code> columns of <code class="docutils literal notranslate"><span class="pre">fit_vals</span></code> are indices into into 
+each mode of <code class="docutils literal notranslate"><span class="pre">tensor</span></code>. The final column of <code class="docutils literal notranslate"><span class="pre">fit_vals</span></code> contains the 
+entry’s fit value.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.cp_decomp.reconstruct_into.html"
+                        title="previous chapter">ensign.cp_decomp.reconstruct_into</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.cp_decomp.are_close.html"
+                        title="next chapter">ensign.cp_decomp.are_close</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.are_close.html" title="ensign.cp_decomp.are_close"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.reconstruct_into.html" title="ensign.cp_decomp.reconstruct_into"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

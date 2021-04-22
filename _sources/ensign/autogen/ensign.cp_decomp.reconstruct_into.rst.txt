@@ -1,0 +1,6 @@
+ensign.cp\_decomp.reconstruct\_into
+===================================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autofunction:: reconstruct_into

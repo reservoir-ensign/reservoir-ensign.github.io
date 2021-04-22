@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Demo &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Data Ingest &amp; Preparation" href="data_ingest.html" />
+    <link rel="prev" title="Prerequisites" href="prereqs.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="data_ingest.html" title="Data Ingest &amp; Preparation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="prereqs.html" title="Prerequisites"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="demo">
+<h1>Demo<a class="headerlink" href="#demo" title="Permalink to this headline">¶</a></h1>
+<p>The demos provide interactive demonstrations of the ENSIGN Python
+functionality.</p>
+<div class="section" id="jupyter-notebook-demos">
+<h2>Jupyter Notebook Demos<a class="headerlink" href="#jupyter-notebook-demos" title="Permalink to this headline">¶</a></h2>
+<p>The notebooks are located in <strong>$ENSIGN_BASE/Ensign-Py3/demo/</strong></p>
+<ul class="simple">
+<li><p>Tour_of_Ensign-Py3.ipynb</p></li>
+</ul>
+<p>A general tour of functionality provided with Ensign-Py3</p>
+<ul class="simple">
+<li><p>Interpreting_Decompositions.ipynb</p></li>
+</ul>
+<p>Develops understanding of decompositions and how to derive insights from them</p>
+</div>
+<div class="section" id="running-jupyter-demos-on-a-local-machine">
+<h2>Running Jupyter Demos on a Local Machine<a class="headerlink" href="#running-jupyter-demos-on-a-local-machine" title="Permalink to this headline">¶</a></h2>
+<p>This is the case when ENSIGN is installed on a machine with a GUI and a
+browser.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>cd $ENSIGN_BASE/Ensign-Py3/demo
+jupyter notebook
+</pre></div>
+</div>
+<p>A browser should appear with a filetree. Click on the demo of choice to begin.</p>
+</div>
+<div class="section" id="running-jupyter-demos-on-a-remote-machine">
+<h2>Running Jupyter Demos on a Remote Machine<a class="headerlink" href="#running-jupyter-demos-on-a-remote-machine" title="Permalink to this headline">¶</a></h2>
+<p>This is the case when ENSIGN is installed on a remote machine without a GUI
+and browser.</p>
+<p>On the remote machine:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>cd $ENSIGN_BASE/Ensign-Py3/demo
+jupyter notebook --no-browser --port=8888
+</pre></div>
+</div>
+<p>On a local machine:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ssh</span> <span class="o">-</span><span class="n">N</span> <span class="o">-</span><span class="n">L</span> <span class="mi">8888</span><span class="p">:</span><span class="n">localhost</span><span class="p">:</span><span class="mi">8888</span> <span class="n">user</span><span class="nd">@host</span>
+</pre></div>
+</div>
+<p>Then navigate to “localhost:8888” on a local browser.</p>
+<p><strong>Note</strong>: If port 8888 is in use, it can be changed with the <cite>–port</cite> option
+and correspondingly in the <cite>ssh</cite> call.</p>
+</div>
+<div class="section" id="demo-application">
+<h2>Demo Application<a class="headerlink" href="#demo-application" title="Permalink to this headline">¶</a></h2>
+<p>Demonstrates basic decomposition functionality and the reading and writing of
+tensors when using the Python API.</p>
+<p>Located at: <strong>$ENSIGN_BASE/Ensign-Py3/demo/basic/</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>cd $ENSIGN_BASE/Ensign-Py3/demo
+python basic/basic.py
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Demo</a><ul>
+<li><a class="reference internal" href="#jupyter-notebook-demos">Jupyter Notebook Demos</a></li>
+<li><a class="reference internal" href="#running-jupyter-demos-on-a-local-machine">Running Jupyter Demos on a Local Machine</a></li>
+<li><a class="reference internal" href="#running-jupyter-demos-on-a-remote-machine">Running Jupyter Demos on a Remote Machine</a></li>
+<li><a class="reference internal" href="#demo-application">Demo Application</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="prereqs.html"
+                        title="previous chapter">Prerequisites</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="data_ingest.html"
+                        title="next chapter">Data Ingest &amp; Preparation</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="data_ingest.html" title="Data Ingest &amp; Preparation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="prereqs.html" title="Prerequisites"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

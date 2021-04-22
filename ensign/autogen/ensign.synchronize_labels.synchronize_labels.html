@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.synchronize_labels.synchronize_labels &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.synchronize_labels.synchronize_labels_stream" href="ensign.synchronize_labels.synchronize_labels_stream.html" />
+    <link rel="prev" title="ensign.query_decomp.query_decomp" href="ensign.query_decomp.query_decomp.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.synchronize_labels.synchronize_labels_stream.html" title="ensign.synchronize_labels.synchronize_labels_stream"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ensign.query_decomp.query_decomp.html" title="ensign.query_decomp.query_decomp"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-synchronize-labels-synchronize-labels">
+<h1>ensign.synchronize_labels.synchronize_labels<a class="headerlink" href="#ensign-synchronize-labels-synchronize-labels" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="ensign.synchronize_labels.synchronize_labels">
+<code class="sig-name descname">synchronize_labels</code><span class="sig-paren">(</span><em class="sig-param">tensor_dirs</em>, <em class="sig-param">modes_to_sync=None</em>, <em class="sig-param">modes_to_sort=[]</em>, <em class="sig-param">output=None</em>, <em class="sig-param">in_place=False</em>, <em class="sig-param">verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/synchronize_labels.html#synchronize_labels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.synchronize_labels.synchronize_labels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Synchronizes labels between tensors. Rewrites each tensor in terms of the new label indices.
+Does not preserve the ordering of any mode maps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>tensor_dirs</strong><span class="classifier">list of str or CPDecomp/SPTensor</span></dt><dd><p>Paths to directories containing tensors to be synchronized.
+Or CPDecomp/SPTensor objects.
+The tensor in the zeroeth place is treated as tensor 0, tensor
+in place one will be treated as tensor 1, etc.</p>
+</dd>
+<dt><strong>modes_to_sync</strong><span class="classifier">list of lists of int</span></dt><dd><p>Specifies which modes of each tensor to synchronize.
+e.g. [[0,1,2], [1,2,3]] synchronizes modes 0,1,2 of tensor 0
+to modes 1,2,3 of tensor 1 respectively.
+Default: synchronizes all modes seen in the initial tensor.</p>
+</dd>
+<dt><strong>modes_to_sort: list of int</strong></dt><dd><p>Specifies which of the synchronized mode tuples, indexed from zero, 
+given in modes_to_sync will be sorted according to their labels. For 
+example, if modes_to_sync is [[1,2,3],[4,5,6]] and modes_to_sort is [0,2]
+then the (first tensor mode, second tensor mode) synchronized tuples are 
+(1,4), (2,5), and (3,6) and modes 1 and 3 of the first tensor and modes 
+4 and 6 of the second tensor will be sorted.</p>
+</dd>
+<dt><strong>output</strong><span class="classifier">str</span></dt><dd><p>Directory to save the synchronized base and update to. Directories named
+‘base’ and ‘update’ in the output directory will be overwritten.
+Default: Do not save to disk.</p>
+</dd>
+<dt><strong>in_place</strong><span class="classifier">bool</span></dt><dd><p>Overwrite the specified base_dir and update_dir. If toggled, the output
+option will be ignored. Default: False</p>
+</dd>
+<dt><strong>verbose</strong><span class="classifier">bool</span></dt><dd><p>Display verbose output. Default: False</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>list of CPDecomp/SPTensor</dt><dd><p>List of synchronized CPDecomp and/or SPTensor objects.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.query_decomp.query_decomp.html"
+                        title="previous chapter">ensign.query_decomp.query_decomp</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.synchronize_labels.synchronize_labels_stream.html"
+                        title="next chapter">ensign.synchronize_labels.synchronize_labels_stream</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.synchronize_labels.synchronize_labels_stream.html" title="ensign.synchronize_labels.synchronize_labels_stream"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ensign.query_decomp.query_decomp.html" title="ensign.query_decomp.query_decomp"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

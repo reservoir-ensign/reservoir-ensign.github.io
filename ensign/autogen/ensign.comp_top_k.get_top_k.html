@@ -1,0 +1,133 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.comp_top_k.get_top_k &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.query_decomp.query_decomp" href="ensign.query_decomp.query_decomp.html" />
+    <link rel="prev" title="ensign.visualize.plot_component" href="ensign.visualize.plot_component.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.query_decomp.query_decomp.html" title="ensign.query_decomp.query_decomp"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ensign.visualize.plot_component.html" title="ensign.visualize.plot_component"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-comp-top-k-get-top-k">
+<h1>ensign.comp_top_k.get_top_k<a class="headerlink" href="#ensign-comp-top-k-get-top-k" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="ensign.comp_top_k.get_top_k">
+<code class="sig-name descname">get_top_k</code><span class="sig-paren">(</span><em class="sig-param">factors</em>, <em class="sig-param">labels</em>, <em class="sig-param">comp_ids</em>, <em class="sig-param">k=10</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/comp_top_k.html#get_top_k"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.comp_top_k.get_top_k" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the top k labels and corresponding scores for each mode for 
+each component in the list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>factors</strong><span class="classifier">list of ndarray</span></dt><dd><p>Factor matrices formatted as a list of ndarrays. Each factor matrix
+should be represented as an ndarray and have shape (mode_size, rank).</p>
+</dd>
+<dt><strong>labels</strong><span class="classifier">list of lists of str</span></dt><dd><p>List of label maps, each of which formatted as a list of strings.
+e.g. labels[1][5] should get the 5th label of mode 1.</p>
+</dd>
+<dt><strong>comp_ids</strong><span class="classifier">list of int</span></dt><dd><p>List of component ids</p>
+</dd>
+<dt><strong>k</strong><span class="classifier">int</span></dt><dd><p>The number of labels and scores to return from each mode for each 
+component.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>ret</strong><span class="classifier">dict</span></dt><dd><p>Nested dictionaries containing sorted lists of tuples. Keys are
+component ID and mode ID.
+Each tuple contains a label, its index in the mode, and its score
+in the factor matrix. (label, idx, score)
+e.g. Retrieve a tuple of the highest scoring label
+from mode 2 of component 10: ret[10][2][0]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.visualize.plot_component.html"
+                        title="previous chapter">ensign.visualize.plot_component</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.query_decomp.query_decomp.html"
+                        title="next chapter">ensign.query_decomp.query_decomp</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.query_decomp.query_decomp.html" title="ensign.query_decomp.query_decomp"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ensign.visualize.plot_component.html" title="ensign.visualize.plot_component"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

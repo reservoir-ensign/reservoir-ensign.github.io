@@ -1,0 +1,6 @@
+ensign.csv2tensor.df2tensor
+===========================
+
+.. currentmodule:: ensign.csv2tensor
+
+.. autofunction:: df2tensor

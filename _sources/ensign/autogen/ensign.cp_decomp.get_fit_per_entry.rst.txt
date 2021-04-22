@@ -1,0 +1,6 @@
+ensign.cp\_decomp.get\_fit\_per\_entry
+======================================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autofunction:: get_fit_per_entry

@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ENSIGN Python API &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ensign.csv2tensor.csv2tensor" href="autogen/ensign.csv2tensor.csv2tensor.html" />
+    <link rel="prev" title="Interpreting Decompositions" href="interpreting_decomps.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="autogen/ensign.csv2tensor.csv2tensor.html" title="ensign.csv2tensor.csv2tensor"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="interpreting_decomps.html" title="Interpreting Decompositions"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-python-api">
+<h1>ENSIGN Python API<a class="headerlink" href="#ensign-python-api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-ensign.csv2tensor">
+<span id="ensign-csv2tensor"></span><h2><a class="reference internal" href="#module-ensign.csv2tensor" title="ensign.csv2tensor"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.csv2tensor</span></code></a><a class="headerlink" href="#module-ensign.csv2tensor" title="Permalink to this headline">¶</a></h2>
+<p>Converts tabular data into a sparse tensor.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.csv2tensor.csv2tensor.html#ensign.csv2tensor.csv2tensor" title="ensign.csv2tensor.csv2tensor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.csv2tensor.csv2tensor</span></code></a>(filepaths[, …])</p></td>
+<td><p>Creates a sparse tensor from one or more CSV files or Bro/Zeek logs.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.csv2tensor.df2tensor.html#ensign.csv2tensor.df2tensor" title="ensign.csv2tensor.df2tensor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.csv2tensor.df2tensor</span></code></a>(dfs[, …])</p></td>
+<td><p>Variant of csv2tensor where in-memory DataFrames are passed instead of  paths to files on disk.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-ensign.cp_decomp">
+<span id="ensign-cp-decomp"></span><h2><a class="reference internal" href="#module-ensign.cp_decomp" title="ensign.cp_decomp"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.cp_decomp</span></code></a><a class="headerlink" href="#module-ensign.cp_decomp" title="Permalink to this headline">¶</a></h2>
+<p>CANDECOMP-PARAFAC (CP) sparse tensor decomposition tools.</p>
+<p>This module contains functions for reading, writing, and performing CP 
+decompositions along with a class for representing decomposition results.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.CPDecomp.html#ensign.cp_decomp.CPDecomp" title="ensign.cp_decomp.CPDecomp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.CPDecomp</span></code></a>()</p></td>
+<td><p>Represents the results of a CP decomposition.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.CPDecomp.compute_cpd_backtrack.html#ensign.cp_decomp.CPDecomp.compute_cpd_backtrack" title="ensign.cp_decomp.CPDecomp.compute_cpd_backtrack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.CPDecomp.compute_cpd_backtrack</span></code></a>(self)</p></td>
+<td><p>Computes CP Decomposition backtracking information.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.read_cp_decomp_dir.html#ensign.cp_decomp.read_cp_decomp_dir" title="ensign.cp_decomp.read_cp_decomp_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.read_cp_decomp_dir</span></code></a>(decomp_dir)</p></td>
+<td><p>Reads a CP decomposition from the filesystem.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.write_cp_decomp_dir.html#ensign.cp_decomp.write_cp_decomp_dir" title="ensign.cp_decomp.write_cp_decomp_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.write_cp_decomp_dir</span></code></a>(…[, …])</p></td>
+<td><p>Writes a CP decomposition to the filesystem.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.reconstruct_into.html#ensign.cp_decomp.reconstruct_into" title="ensign.cp_decomp.reconstruct_into"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.reconstruct_into</span></code></a>(decomp, tensor)</p></td>
+<td><p>Reconstructs a CP decomposition ‘into’ a sparse tensor.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.get_fit_per_entry.html#ensign.cp_decomp.get_fit_per_entry" title="ensign.cp_decomp.get_fit_per_entry"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.get_fit_per_entry</span></code></a>(decomp, …)</p></td>
+<td><p>Calculates fit for each entry of a reconstructed tensor present in the original tensor.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.are_close.html#ensign.cp_decomp.are_close" title="ensign.cp_decomp.are_close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.are_close</span></code></a>(decomp0, decomp1)</p></td>
+<td><p>Checks if weights and factor matrices are close according to tolerance.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.cp_als.html#ensign.cp_decomp.cp_als" title="ensign.cp_decomp.cp_als"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.cp_als</span></code></a>(sptensor, rank[, …])</p></td>
+<td><p>Performs a CP decomposition using the alternating least squares (ALS) method.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.cp_als_nn.html#ensign.cp_decomp.cp_als_nn" title="ensign.cp_decomp.cp_als_nn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.cp_als_nn</span></code></a>(sptensor, rank[, …])</p></td>
+<td><p>Performs a nonnegative CP decomposition using the alternating least squares (ALS) method.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.cp_apr.html#ensign.cp_decomp.cp_apr" title="ensign.cp_decomp.cp_apr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.cp_apr</span></code></a>(sptensor, rank[, …])</p></td>
+<td><p>Performs a CP decomposition using the alternating Poisson regression (APR) method.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.cp_apr_pdnr.html#ensign.cp_decomp.cp_apr_pdnr" title="ensign.cp_decomp.cp_apr_pdnr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.cp_apr_pdnr</span></code></a>(sptensor, rank)</p></td>
+<td><p>Performs a CP decomposition using alternating Poisson regression (APR) with projected damped Newton row (PDNR) subproblem.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.cp_decomp.cp_apr_pqnr.html#ensign.cp_decomp.cp_apr_pqnr" title="ensign.cp_decomp.cp_apr_pqnr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.cp_decomp.cp_apr_pqnr</span></code></a>(sptensor, rank)</p></td>
+<td><p>Performs a CP decomposition using alternating Poisson regression (APR) with projected quasi-Newton row (PQNR) subproblem.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-ensign.sptensor">
+<span id="ensign-sptensor"></span><h2><a class="reference internal" href="#module-ensign.sptensor" title="ensign.sptensor"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.sptensor</span></code></a><a class="headerlink" href="#module-ensign.sptensor" title="Permalink to this headline">¶</a></h2>
+<p>Sparse tensor tools.</p>
+<p>This module contains functions for reading, writing, and representing sparse 
+tensors.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.sptensor.SPTensor.html#ensign.sptensor.SPTensor" title="ensign.sptensor.SPTensor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.sptensor.SPTensor</span></code></a>([order, nnz, …])</p></td>
+<td><p>Represents a sparse tensor.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.sptensor.SPTensor.write.html#ensign.sptensor.SPTensor.write" title="ensign.sptensor.SPTensor.write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.sptensor.SPTensor.write</span></code></a>(self, outdir)</p></td>
+<td><p>Writes a text representation of the sparse tensor to the given  directory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.sptensor.read_sptensor.html#ensign.sptensor.read_sptensor" title="ensign.sptensor.read_sptensor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.sptensor.read_sptensor</span></code></a>(directory[, …])</p></td>
+<td><p>Reads a sparse tensor file from the filesystem.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.sptensor.write_sptensor.html#ensign.sptensor.write_sptensor" title="ensign.sptensor.write_sptensor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.sptensor.write_sptensor</span></code></a>(directory, …)</p></td>
+<td><p>Writes a sparse tensor to the filesystem.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-ensign.visualize">
+<span id="ensign-visualize"></span><h2><a class="reference internal" href="#module-ensign.visualize" title="ensign.visualize"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.visualize</span></code></a><a class="headerlink" href="#module-ensign.visualize" title="Permalink to this headline">¶</a></h2>
+<p>Visualize a tensor decomposition by plotting scores for selected components 
+in each mode.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.visualize.plot_component.html#ensign.visualize.plot_component" title="ensign.visualize.plot_component"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.visualize.plot_component</span></code></a>(decomp, comp_id)</p></td>
+<td><p>Visualizes a specific component of a decomposition using blue-line charts.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-ensign.comp_top_k">
+<span id="ensign-comp-top-k"></span><h2><a class="reference internal" href="#module-ensign.comp_top_k" title="ensign.comp_top_k"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.comp_top_k</span></code></a><a class="headerlink" href="#module-ensign.comp_top_k" title="Permalink to this headline">¶</a></h2>
+<p>Module for investigating the contents of a tensor decomposition by listing
+the highest scoring labels in a component.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.comp_top_k.get_top_k.html#ensign.comp_top_k.get_top_k" title="ensign.comp_top_k.get_top_k"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.comp_top_k.get_top_k</span></code></a>(factors, labels, …)</p></td>
+<td><p>Computes the top k labels and corresponding scores for each mode for  each component in the list.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-ensign.query_decomp">
+<span id="ensign-query-decomp"></span><h2><a class="reference internal" href="#module-ensign.query_decomp" title="ensign.query_decomp"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.query_decomp</span></code></a><a class="headerlink" href="#module-ensign.query_decomp" title="Permalink to this headline">¶</a></h2>
+<p>Return all components containing the query label in the given mode.
+Up to k components are printed where &lt;query label&gt; has a non-zero score.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.query_decomp.query_decomp.html#ensign.query_decomp.query_decomp" title="ensign.query_decomp.query_decomp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.query_decomp.query_decomp</span></code></a>(factors, …)</p></td>
+<td><p>Compute all components containing the query label in the given mode.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-ensign.synchronize_labels">
+<span id="ensign-synchronize-labels"></span><h2><a class="reference internal" href="#module-ensign.synchronize_labels" title="ensign.synchronize_labels"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.synchronize_labels</span></code></a><a class="headerlink" href="#module-ensign.synchronize_labels" title="Permalink to this headline">¶</a></h2>
+<p>Adjusts labels of multiple tensors and/or CP decompositions such that 
+identical labels (e.g., “1/1/1970”, “10.1.1.1”) map to unique indices
+(e.g., 5, 437).</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.synchronize_labels.synchronize_labels.html#ensign.synchronize_labels.synchronize_labels" title="ensign.synchronize_labels.synchronize_labels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.synchronize_labels.synchronize_labels</span></code></a>(…)</p></td>
+<td><p>Synchronizes labels between tensors.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="autogen/ensign.synchronize_labels.synchronize_labels_stream.html#ensign.synchronize_labels.synchronize_labels_stream" title="ensign.synchronize_labels.synchronize_labels_stream"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.synchronize_labels.synchronize_labels_stream</span></code></a>(…)</p></td>
+<td><p>Synchronizes specified modes between a base decomposition and an update tensor.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-ensign.decomp_diff">
+<span id="ensign-decomp-diff"></span><h2><a class="reference internal" href="#module-ensign.decomp_diff" title="ensign.decomp_diff"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.decomp_diff</span></code></a><a class="headerlink" href="#module-ensign.decomp_diff" title="Permalink to this headline">¶</a></h2>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="autogen/ensign.decomp_diff.decomp_diff.html#ensign.decomp_diff.decomp_diff" title="ensign.decomp_diff.decomp_diff"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ensign.decomp_diff.decomp_diff</span></code></a>(decomps[, …])</p></td>
+<td><p>Determine differences(similarities) between decompositions.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">ENSIGN Python API</a><ul>
+<li><a class="reference internal" href="#module-ensign.csv2tensor"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.csv2tensor</span></code></a></li>
+<li><a class="reference internal" href="#module-ensign.cp_decomp"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.cp_decomp</span></code></a></li>
+<li><a class="reference internal" href="#module-ensign.sptensor"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.sptensor</span></code></a></li>
+<li><a class="reference internal" href="#module-ensign.visualize"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.visualize</span></code></a></li>
+<li><a class="reference internal" href="#module-ensign.comp_top_k"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.comp_top_k</span></code></a></li>
+<li><a class="reference internal" href="#module-ensign.query_decomp"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.query_decomp</span></code></a></li>
+<li><a class="reference internal" href="#module-ensign.synchronize_labels"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.synchronize_labels</span></code></a></li>
+<li><a class="reference internal" href="#module-ensign.decomp_diff"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ensign.decomp_diff</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="interpreting_decomps.html"
+                        title="previous chapter">Interpreting Decompositions</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="autogen/ensign.csv2tensor.csv2tensor.html"
+                        title="next chapter">ensign.csv2tensor.csv2tensor</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="autogen/ensign.csv2tensor.csv2tensor.html" title="ensign.csv2tensor.csv2tensor"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="interpreting_decomps.html" title="Interpreting Decompositions"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

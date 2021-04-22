@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>ensign.cp_decomp.reconstruct_into &#8212; ENSIGN Python 4.3 documentation</title>
+    <link rel="stylesheet" href="../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ensign.cp_decomp.get_fit_per_entry" href="ensign.cp_decomp.get_fit_per_entry.html" />
+    <link rel="prev" title="ensign.cp_decomp.write_cp_decomp_dir" href="ensign.cp_decomp.write_cp_decomp_dir.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.get_fit_per_entry.html" title="ensign.cp_decomp.get_fit_per_entry"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.write_cp_decomp_dir.html" title="ensign.cp_decomp.write_cp_decomp_dir"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" accesskey="U">ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ensign-cp-decomp-reconstruct-into">
+<h1>ensign.cp_decomp.reconstruct_into<a class="headerlink" href="#ensign-cp-decomp-reconstruct-into" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="ensign.cp_decomp.reconstruct_into">
+<code class="sig-name descname">reconstruct_into</code><span class="sig-paren">(</span><em class="sig-param">decomp</em>, <em class="sig-param">tensor</em>, <em class="sig-param">comp_ids=None</em>, <em class="sig-param">orig_entries=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ensign/cp_decomp.html#reconstruct_into"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ensign.cp_decomp.reconstruct_into" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reconstructs a CP decomposition ‘into’ a sparse tensor.</p>
+<p>Reconstructs a tensor from a decomposition <code class="docutils literal notranslate"><span class="pre">decomp</span></code> by computing and summing 
+selected outer products. If a list of component IDs is given in <code class="docutils literal notranslate"><span class="pre">comp_ids</span></code>
+then only components in this list will contribute to the reconstruction.
+Only nonzero indices of <code class="docutils literal notranslate"><span class="pre">tensor</span></code> are included in the reconstructed tensor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>decomp</strong><span class="classifier">CPDecomp</span></dt><dd><p>Decompostion to reconstruct using sum-of-outer-products.</p>
+</dd>
+<dt><strong>tensor</strong><span class="classifier">SPTensor</span></dt><dd><p>The sparse tensor that contains the nonzero entries to reconstruct into.</p>
+</dd>
+<dt><strong>comp_ids</strong><span class="classifier">list, optional</span></dt><dd><p>A list of components to reconstruct the SPTensor from. If <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), 
+all components are used.</p>
+</dd>
+<dt><strong>orig_entries</strong><span class="classifier">bool, optional</span></dt><dd><p>This parameter controls the value of entries in the reconstructed tensor. 
+When <code class="docutils literal notranslate"><span class="pre">True</span></code>, nonzero values in the sum-of-outer-products reconstruction 
+are given the same value as <code class="docutils literal notranslate"><span class="pre">tensor</span></code> regardless of reconstructed value. 
+When <code class="docutils literal notranslate"><span class="pre">False</span></code> (default) nonzero values are given the value produced by 
+the sum-of-outer-products reconstruction.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>reconstructed_spt</strong><span class="classifier">SPTensor</span></dt><dd><p>The sparse tensor produced by reconstructing selected components of 
+<code class="docutils literal notranslate"><span class="pre">decomp</span></code> into nonzero values of <code class="docutils literal notranslate"><span class="pre">tensor</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ensign.cp_decomp.write_cp_decomp_dir.html"
+                        title="previous chapter">ensign.cp_decomp.write_cp_decomp_dir</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="ensign.cp_decomp.get_fit_per_entry.html"
+                        title="next chapter">ensign.cp_decomp.get_fit_per_entry</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.get_fit_per_entry.html" title="ensign.cp_decomp.get_fit_per_entry"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ensign.cp_decomp.write_cp_decomp_dir.html" title="ensign.cp_decomp.write_cp_decomp_dir"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">ENSIGN Python 4.3 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../ensign.html" >ENSIGN Python API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2016-2020, Reservoir Labs. All documentation covered under SBIR data rights.
+    </div>
+  </body>
+</html>

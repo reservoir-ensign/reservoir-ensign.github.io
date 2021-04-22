@@ -1,0 +1,23 @@
+ensign.cp\_decomp.CPDecomp
+==========================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autoclass:: CPDecomp
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CPDecomp.__init__
+      ~CPDecomp.compute_cpd_backtrack
+   
+   
+
+   
+   
+   

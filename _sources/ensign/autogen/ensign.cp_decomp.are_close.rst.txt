@@ -1,0 +1,6 @@
+ensign.cp\_decomp.are\_close
+============================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autofunction:: are_close

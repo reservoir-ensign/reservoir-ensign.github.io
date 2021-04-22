@@ -1,0 +1,6 @@
+ensign.cp\_decomp.write\_cp\_decomp\_dir
+========================================
+
+.. currentmodule:: ensign.cp_decomp
+
+.. autofunction:: write_cp_decomp_dir
